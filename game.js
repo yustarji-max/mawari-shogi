@@ -64,11 +64,15 @@ function offsetFor(index,count){
 }
 
 async function ensureAudio(){
-  if(!audioContext)audioContext=new (window.AudioContext||window.webkitAudioContext)();
-  if(audioContext.state!=='running'){
-    try{await audioContext.resume();audioButton.classList.remove('show');}
-    catch(_){audioButton.classList.add('show');}
-  }
+  try{
+    if(!audioContext)audioContext=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioContext.state!=='running'){
+      const resumePromise=audioContext.resume();
+      await Promise.race([resumePromise,sleep(180)]);
+      if(audioContext.state==='running')audioButton.classList.remove('show');
+      else audioButton.classList.add('show');
+    }
+  }catch(_){audioButton.classList.add('show');}
 }
 function tone(freq,duration=.04,volume=.025,type='triangle'){
   if(!audioContext||audioContext.state!=='running')return;
@@ -202,9 +206,29 @@ async function resolveNormalRoll(value){
 
 async function performRoll(){
   if(busy||!running)return;
-  await ensureAudio();busy=true;updateUI();const index=war?currentWarPlayerIndex():turnIndex,p=players[index],golds=goldRoll();await settleGolds(golds);const value=totalGold(golds);resultEl.textContent=`${p.name}：${value}`;log(`${p.name}　${golds.map(g=>g.label).join('・')} = ${value}`);if(war)await resolveWarRoll(value);else await resolveNormalRoll(value);setupGolds();
+  const index=war?currentWarPlayerIndex():turnIndex;
+  const p=players[index];
+  busy=true;updateUI();
+  try{
+    if(!p.cpu) await ensureAudio();
+    const golds=goldRoll();
+    await settleGolds(golds);
+    const value=totalGold(golds);
+    resultEl.textContent=`${p.name}：${value}`;
+    log(`${p.name}　${golds.map(g=>g.label).join('・')} = ${value}`);
+    if(war) await resolveWarRoll(value);
+    else await resolveNormalRoll(value);
+  }catch(error){
+    console.error(error);
+    busy=false;
+    resultEl.textContent=`エラー：${error?.message||error}`;
+    log(`エラー：${error?.message||error}`);
+    render();
+  }finally{
+    setupGolds();
+  }
 }
-async function autoRoll(){if(busy||!running)return;await ensureAudio();spinGolds(Math.random()*6);for(let i=0;i<5;i++){clack();await sleep(85);}await performRoll();}
+async function autoRoll(){if(busy||!running)return;spinGolds(Math.random()*6);for(let i=0;i<5;i++){clack();await sleep(85);}await performRoll();}
 function nextTurn(){
   if(players.filter(p=>!p.done).length<=1){const last=players.find(p=>!p.done);if(last){last.done=true;last.place=4;}running=false;render();log('全員の順位が決まりました。');return;}
   do{turnIndex=(turnIndex+1)%players.length;}while(players[turnIndex].done);render();if(!players[turnIndex].cpu&&navigator.vibrate)navigator.vibrate(80);if(players[turnIndex].cpu)setTimeout(autoRoll,650);
@@ -228,3 +252,6 @@ document.querySelector('#startButton').addEventListener('click',async()=>{await 
 window.addEventListener('resize',setupGolds);
 
 makeBoard();prepareNames();setupGolds();renderLadder();updateUI();
+
+window.addEventListener('error',e=>{resultEl.textContent='エラー：'+e.message;log('エラー：'+e.message);busy=false;try{render()}catch(_){}});
+window.addEventListener('unhandledrejection',e=>{const msg=e.reason?.message||String(e.reason);resultEl.textContent='エラー：'+msg;log('エラー：'+msg);busy=false;try{render()}catch(_){}});

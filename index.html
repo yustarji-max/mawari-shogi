@@ -1,83 +1,58 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>まわり将棋 v0.5</title>
-<style>
-:root{--bg:#e8e2d8;--panel:#f7f3eb;--ink:#201f1c;--muted:#756f66;--wood1:#e1bc7c;--wood2:#c99759}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}.app{max-width:980px;margin:auto;padding:12px}.card{background:var(--panel);border-radius:18px;padding:12px;margin:10px 0;box-shadow:0 8px 22px #0001}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}button,select,input{font-size:15px;border-radius:11px;padding:10px}button{border:0;background:#222;color:#fff;font-weight:800}button:disabled{opacity:.35}select,input{border:1px solid #bbb;background:#fff}.small,.sub{font-size:12px;color:var(--muted)}h1{font-size:25px;margin:4px 0 2px}.names{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:8px}.namebox{background:#ebe5db;border-radius:12px;padding:8px}.namebox input{width:100%;margin-top:4px}
-.gameGrid{display:grid;grid-template-columns:minmax(0,1fr) 128px;gap:10px;align-items:start}.boardCol{min-width:0}#board{position:relative;width:min(76vw,610px);max-width:100%;aspect-ratio:1;background:linear-gradient(115deg,var(--wood1),var(--wood2));border:4px solid #574329;overflow:hidden}.cell{position:absolute;border:1px solid #69502f88}.piece{position:absolute;z-index:7;width:8.5%;height:10.5%;transform:translate(-50%,-50%) rotate(var(--rot));clip-path:polygon(22% 0,78% 0,100% 100%,0 100%);background:linear-gradient(145deg,#f1d19a,#c8944c);border:1px solid #68451d;display:flex;align-items:center;justify-content:center;font-family:"Yu Mincho",serif;font-weight:900;font-size:clamp(10px,2.7vw,20px);line-height:.9;text-align:center;filter:drop-shadow(0 3px 2px #0003);transition:left .18s,top .18s,transform .2s}.piece.active{filter:drop-shadow(0 0 11px var(--glow)) drop-shadow(0 3px 2px #0003);transform:translate(-50%,-58%) rotate(var(--rot)) scale(1.08)}.helper{font-size:.5em;display:block}.cushion{position:absolute;z-index:5;width:9.5%;height:4%;transform:translate(-50%,45%);border-radius:50%;opacity:.78}.hand{position:absolute;z-index:12;width:16%;height:10%;border-radius:55%;background:#e2b28d;box-shadow:0 5px 12px #0003;opacity:0;transition:left .16s,top .16s,opacity .12s;transform:translate(-50%,-50%)}.hand:after{content:"";position:absolute;left:-32%;top:18%;width:55%;height:62%;background:var(--sleeve);border-radius:40%}.hand.show{opacity:.96}.event{position:absolute;z-index:25;left:50%;top:50%;transform:translate(-50%,-50%);width:80%;background:#f8f4ebf2;border-radius:18px;padding:14px;text-align:center;box-shadow:0 15px 40px #0005;display:none}.event.show{display:block}.event h2{margin:0 0 6px}.rankChange{font-size:20px;font-weight:900}
-.turnBox{font-size:20px;font-weight:900;text-align:center;padding:10px;border-radius:14px;background:#e8e0d4;margin:9px 0 7px;border:3px solid transparent}.roller{position:relative;height:144px;background:#e5ded2;border-radius:18px;touch-action:none;overflow:hidden}.hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:800;color:#665e54;pointer-events:none}.gold{position:absolute;width:47px;height:55px;clip-path:polygon(22% 0,78% 0,100% 100%,0 100%);background:linear-gradient(145deg,#f1d19a,#c8944c);border:2px solid #68451d;display:flex;align-items:center;justify-content:center;font-family:serif;font-weight:900;transform:translate(-50%,-50%) rotate(var(--grot));transition:left .1s,top .1s,transform .25s}.gold.side{width:58px;height:13px;clip-path:none;border-radius:5px}.gold.vertical{width:12px;height:56px;clip-path:none;border-radius:5px}.rollLabel{margin-top:7px;text-align:center;font-weight:900;font-size:16px}.rollButton{width:100%;margin-top:7px}
-.ladder{background:#ebe5db;border-radius:14px;padding:6px}.ladder h3{text-align:center;font-size:13px;margin:2px}.rankRow{height:42px;border-top:1px solid #d5cab9;display:flex;align-items:center;justify-content:center;font-family:"Yu Mincho",serif;font-weight:800;font-size:12px;position:relative}.rankRow.current{background:#fff8;border-radius:8px;outline:2px solid var(--hi)}.markers{position:absolute;right:2px;display:flex;gap:2px;flex-wrap:wrap;max-width:50px}.marker{width:11px;height:11px;border-radius:50%;box-shadow:0 1px 2px #0004}
-.players{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.pb{padding:8px;border-radius:12px;background:#ebe5db;font-size:13px}.pb.on{outline:3px solid #222}.you{display:inline-block;margin-left:5px;padding:1px 6px;border-radius:999px;background:#222;color:#fff;font-size:11px}.log{height:145px;overflow:auto;background:#171714;color:#fff;border-radius:12px;padding:8px;font:11px/1.5 ui-monospace,monospace}
-#warPanel{display:none}.warTitle{text-align:center;font-size:21px;font-weight:900;margin-bottom:7px}.warArena{background:#d8d0c3;border-radius:16px;padding:10px;overflow-x:auto}.warLane{display:grid;grid-template-columns:repeat(17,minmax(34px,1fr));gap:3px;margin:7px 0;padding:7px;border-radius:12px;min-width:660px}.warCell{height:44px;border-radius:6px;background:#ffffff55;position:relative;display:flex;align-items:center;justify-content:center}.warToken{width:31px;height:36px;clip-path:polygon(22% 0,78% 0,100% 100%,0 100%);background:linear-gradient(145deg,#f1d19a,#c8944c);border:1px solid #68451d;display:flex;align-items:center;justify-content:center;font-family:"Yu Mincho",serif;font-weight:900;font-size:11px;filter:drop-shadow(0 2px 2px #0003)}.warDot{position:absolute;bottom:2px;width:12px;height:12px;border-radius:50%;box-shadow:0 1px 2px #0003}.warName{font-weight:900;font-size:12px;margin-right:8px}.warRank{font-size:12px}.warInfo{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}.finishBadge{font-size:12px;font-weight:900;padding:2px 7px;border-radius:999px;background:#fff9}
-@media(max-width:740px){.gameGrid{grid-template-columns:minmax(0,1fr) 104px;gap:6px}#board{width:100%}.rankRow{height:39px;font-size:11px}.markers{max-width:40px}.marker{width:9px;height:9px}.turnBox{font-size:18px}.roller{height:134px}.names{grid-template-columns:1fr 1fr}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>まわり将棋 v1.0 base</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-<body><div class="app">
-<h1>まわり将棋</h1><div class="sub">v0.5 — 4人固定／多人数戦争／王位未確定／新確率</div>
-<div class="card"><div class="row"><label>人間の人数</label><select id="humanCount"><option>1</option><option>2</option><option>3</option><option>4</option></select><button id="randomNames">名前をランダム設定</button></div><div class="small">4人で遊び、足りない席は自動プレイヤーが担当します。名前は自由に変更できます。</div><div id="names" class="names"></div><button id="start" style="margin-top:9px">順番を決めて開始</button></div>
-<div id="normalPanel" class="card"><div class="gameGrid"><div class="boardCol"><div id="board"><div id="hand" class="hand"></div><div id="event" class="event"></div></div><div id="turnBox" class="turnBox">開始前</div><div id="roller" class="roller"><div class="hint">金を指でくるくる回し、<br>好きなところで指を離す</div></div><div id="rollLabel" class="rollLabel">▶ 金を振る</div><button id="rollButton" class="rollButton">▶ あなたが金を振る</button><div id="result" style="text-align:center;font-weight:900;margin-top:6px"></div></div><div class="ladder"><h3>出世表</h3><div id="ladder"></div></div></div></div>
-<div id="warPanel" class="card"><div id="warTitle" class="warTitle">戦争</div><div id="warArena" class="warArena"></div><div id="warTurn" class="turnBox"></div><div id="warRoller" class="roller"><div class="hint">金をくるくる回して離す</div></div><button id="warRollButton" class="rollButton">▶ あなたが金を振る</button></div>
-<div class="card"><div id="players" class="players"></div></div><div class="card"><div id="log" class="log"></div></div>
-</div>
-<script>
-const COLORS=['#b8493f','#315f8c','#668447','#8a5b91'];
-const SLEEVES=['#8f3b32','#244f78','#56743e','#704875'];
-const NAME_POOL=['たかし','みき','けんじ','ゆうこ','まさる','あきこ','しんじ','なおみ','ひろし','えみ','こうじ','さちこ','まこと','ようこ','ゆうた','あや'];
-const RANKS=['歩','と','香','成香','桂','成桂','銀','成銀','角','馬','飛','龍','王'];
-const CORNERS=[0,8,16,24];
-const board=document.querySelector('#board'),hand=document.querySelector('#hand'),eventBox=document.querySelector('#event'),roller=document.querySelector('#roller'),warRoller=document.querySelector('#warRoller'),logEl=document.querySelector('#log');
-let players=[],turnIndex=0,running=false,busy=false,war=null,audio=null,gesture={};
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-function log(s){const d=document.createElement('div');d.textContent=s;logEl.appendChild(d);logEl.scrollTop=9999}
-function initAudio(){if(!audio)audio=new(window.AudioContext||window.webkitAudioContext)()}
-function tone(f,d=.04,v=.025,t='triangle'){initAudio();const o=audio.createOscillator(),g=audio.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(audio.destination);o.start();g.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+d);o.stop(audio.currentTime+d)}
-function clack(){tone(500+Math.random()*180,.035,.018,'square')}function thud(){tone(120,.09,.05)}function vibrate(){if(navigator.vibrate)navigator.vibrate(60)}
-function coords(){const a=[];for(let c=0;c<9;c++)a.push([0,c]);for(let r=1;r<9;r++)a.push([r,8]);for(let c=7;c>=0;c--)a.push([8,c]);for(let r=7;r>=1;r--)a.push([r,0]);return a}const COORDS=coords();
-function makeBoard(){board.querySelectorAll('.cell').forEach(x=>x.remove());for(let r=0;r<9;r++)for(let c=0;c<9;c++){const e=document.createElement('div');e.className='cell';e.style.left=c*100/9+'%';e.style.top=r*100/9+'%';e.style.width=e.style.height=100/9+'%';board.insertBefore(e,hand)}}makeBoard();
-function posStyle(pos){const[r,c]=COORDS[(pos+32)%32];return{left:(c+.5)*100/9+'%',top:(r+.5)*100/9+'%'}}
-function dir(pos){pos=(pos+32)%32;return pos<=8?90:pos<=16?180:pos<=24?270:0}
-function isCorner(pos){return CORNERS.includes((pos+32)%32)}
-function displayPiece(p){const same=players.filter(x=>!x.done&&x.rank===p.rank),n=same.indexOf(p);if((p.rank===8||p.rank===9)&&n>=2)return p.rank===8?['成銀','歩']:['成銀','と'];if((p.rank===10||p.rank===11)&&n>=2)return p.rank===10?['馬','歩']:['馬','と'];if(p.rank===12&&n>=2)return['龍','歩'];return[RANKS[p.rank],null]}
-function pieceHTML(p){const d=displayPiece(p);return d[1]?d[0]+'<span class="helper">＋'+d[1]+'</span>':d[0]}
-function renderPieces(){board.querySelectorAll('.piece,.cushion').forEach(x=>x.remove());players.forEach((p,i)=>{if(p.done)return;const z=posStyle(p.pos),c=document.createElement('div');c.className='cushion';c.style.left=z.left;c.style.top=z.top;c.style.background=p.color;board.insertBefore(c,hand);const e=document.createElement('div');e.className='piece'+(running&&i===turnIndex?' active':'');e.style.left=z.left;e.style.top=z.top;e.style.setProperty('--rot',dir(p.pos)+'deg');e.style.setProperty('--glow',p.color);e.innerHTML=pieceHTML(p);board.insertBefore(e,hand)})}
-function renderPlayers(){const root=document.querySelector('#players');root.innerHTML='';players.forEach((p,i)=>{const e=document.createElement('div');e.className='pb'+(running&&i===turnIndex&&!war?' on':'');e.innerHTML='<b style="color:'+p.color+'">● '+p.name+'</b>'+(!p.cpu?'<span class="you">あなた</span>':'')+'<br>'+RANKS[p.rank]+(p.pendingKing?'（王位未確定）':'')+(p.cpu?'・自動':'')+(p.done?'<br><b>'+p.place+'位</b>':'');root.appendChild(e)})}
-function renderLadder(){const root=document.querySelector('#ladder');root.innerHTML='';const active=players[turnIndex];for(let r=12;r>=0;r--){const e=document.createElement('div');e.className='rankRow'+(running&&!war&&active&&active.rank===r?' current':'');e.style.setProperty('--hi',active?active.color:'#222');e.textContent=RANKS[r];const m=document.createElement('div');m.className='markers';players.forEach(p=>{if(p.rank===r&&!p.done){const x=document.createElement('i');x.className='marker';x.style.background=p.color;m.appendChild(x)}});e.appendChild(m);root.appendChild(e)}}
-function activePlayer(){return war?players[war.order[war.turnPos]]:players[turnIndex]}
-function updateTurnUI(){const p=activePlayer();const box=war?document.querySelector('#warTurn'):document.querySelector('#turnBox');if(!running||!p){box.textContent='開始前';box.style.borderColor='transparent';return}let text;if(p.cpu)text=p.name+'の番　考え中…';else text='● あなたの番';box.textContent=text;box.style.color=p.color;box.style.borderColor=p.color;const btn=war?document.querySelector('#warRollButton'):document.querySelector('#rollButton');btn.textContent=p.cpu?'自動で金を振ります':'▶ あなたが金を振る';btn.disabled=p.cpu||busy;if(!p.cpu&&!busy)vibrate()}
-function render(){renderPieces();renderPlayers();renderLadder();updateTurnUI()}
-async function showEvent(title,html='',ms=650){eventBox.innerHTML='<h2>'+title+'</h2>'+html;eventBox.classList.add('show');await sleep(ms);eventBox.classList.remove('show')}
-async function showHand(pos,i){const z=posStyle(pos);hand.style.left=z.left;hand.style.top=z.top;hand.style.setProperty('--sleeve',players[i].sleeve);hand.classList.add('show');await sleep(145)}
-async function movePlayer(i,n){await showHand(players[i].pos,i);for(let k=0;k<n;k++){players[i].pos=(players[i].pos+1)%32;await showHand(players[i].pos,i);clack();renderPieces();await sleep(185)}hand.classList.remove('show')}
-async function changeRank(i,delta,label){const p=players[i],before=RANKS[p.rank];p.rank=Math.max(0,Math.min(12,p.rank+delta));p.pendingKing=p.rank===12;await showEvent(label,'<div class="rankChange" style="color:'+p.color+'">'+p.name+'<br>'+before+' → '+RANKS[p.rank]+'</div>',760);thud();render();log(p.name+'：'+before+' → '+RANKS[p.rank])}
-function rollGold(){const out=[];for(let i=0;i<4;i++){const x=Math.random();if(x<.02)out.push(['vertical',10,'縦']);else if(x<.08)out.push(['side',5,'横']);else if(x<.54)out.push(['face',1,'表']);else out.push(['back',0,'裏'])}return out}
-function total(o){return o.reduce((s,x)=>s+x[1],0)}
-function setupGold(root){root.querySelectorAll('.gold').forEach(x=>x.remove());const x=root.clientWidth/2,y=root.clientHeight/2;for(let i=0;i<4;i++){const e=document.createElement('div');e.className='gold';e.textContent='金';const a=i*Math.PI/2;e.style.left=x+Math.cos(a)*42+'px';e.style.top=y+Math.sin(a)*33+'px';root.appendChild(e)}}
-function spinGold(root,a){const x=root.clientWidth/2,y=root.clientHeight/2;[...root.querySelectorAll('.gold')].forEach((e,i)=>{const q=a+i*Math.PI/2;e.style.left=x+Math.cos(q)*45+'px';e.style.top=y+Math.sin(q)*35+'px';e.style.setProperty('--grot',q*57.3+'deg')})}
-async function settleGold(root,o){[...root.querySelectorAll('.gold')].forEach((e,i)=>{const x=o[i];e.className='gold '+(x[0]==='side'?'side':x[0]==='vertical'?'vertical':'');e.textContent=x[0]==='back'?'':x[0]==='face'?'金':x[2];e.style.left=23+i*18+'%';e.style.top='54%'});await sleep(600);thud()}
-function occupancy(){const map=new Map();players.forEach((p,i)=>{if(p.done)return;const key=p.pos%32;if(!map.has(key))map.set(key,[]);map.get(key).push(i)});return map}
-function oppositePos(pos){const[r,c]=COORDS[pos];if(r===0&&c>0&&c<8)return COORDS.findIndex(x=>x[0]===8&&x[1]===c);if(r===8&&c>0&&c<8)return COORDS.findIndex(x=>x[0]===0&&x[1]===c);if(c===0&&r>0&&r<8)return COORDS.findIndex(x=>x[1]===8&&x[0]===r);if(c===8&&r>0&&r<8)return COORDS.findIndex(x=>x[1]===0&&x[0]===r);return-1}
-function battleGroupAt(i){const occ=occupancy(),p=players[i],opp=oppositePos(p.pos);if(opp<0||!occ.has(opp))return null;const a=occ.get(p.pos)||[],b=occ.get(opp)||[];const all=[...a,...b];return all.length>=2?{sideA:a,sideB:b,all}:null}
-function determineWarOrder(indices){return [...indices].sort((a,b)=>players[a].rank-players[b].rank||players[a].seat-players[b].seat)}
-async function startWar(group){war={group,participants:group.all,order:determineWarOrder(group.all),turnPos:0,progress:new Map(),finished:[],needsTieBreak:false};group.all.forEach(i=>war.progress.set(i,0));document.querySelector('#normalPanel').style.display='none';document.querySelector('#warPanel').style.display='block';document.querySelector('#warTitle').textContent=group.all.length+'人戦争';renderWar();await showWarIntro();busy=false;updateTurnUI();if(activePlayer().cpu)setTimeout(autoRoll,650)}
-async function showWarIntro(){document.querySelector('#warTitle').textContent=war.participants.map(i=>players[i].name).join('・')+' の戦争';await sleep(500)}
-function renderWar(){const root=document.querySelector('#warArena');root.innerHTML='';war.participants.forEach(i=>{const lane=document.createElement('div');lane.className='warLane';lane.style.background=players[i].color+'55';const info=document.createElement('div');info.className='warInfo';info.innerHTML='<span><span class="warName" style="color:'+players[i].color+'">'+players[i].name+'</span><span class="warRank">'+RANKS[players[i].rank]+'</span></span>'+(war.finished.includes(i)?'<span class="finishBadge">'+(war.finished.indexOf(i)+1)+'位</span>':'');root.appendChild(info);for(let c=0;c<=16;c++){const cell=document.createElement('div');cell.className='warCell';if(c===war.progress.get(i)){const token=document.createElement('div');token.className='warToken';token.innerHTML=pieceHTML(players[i]);const dot=document.createElement('div');dot.className='warDot';dot.style.background=players[i].color;cell.appendChild(token);cell.appendChild(dot)}lane.appendChild(cell)}root.appendChild(lane)});updateTurnUI()}
-async function moveWar(i,n){const goal=Math.min(16,war.progress.get(i)+n);while(war.progress.get(i)<goal){war.progress.set(i,war.progress.get(i)+1);clack();renderWar();await sleep(185)}}
-function warDeltas(n){return n===2?[1,-1]:n===3?[2,0,-2]:[3,1,-1,-3]}
-async function finishWar(){const deltas=warDeltas(war.participants.length);for(let k=0;k<war.finished.length;k++){const i=war.finished[k],d=deltas[k];if(d!==0)await changeRank(i,d,d>0?'戦争結果・出世':'戦争結果・降格');else log(players[i].name+'：階級変化なし')}war=null;document.querySelector('#warPanel').style.display='none';document.querySelector('#normalPanel').style.display='block';busy=false;render();nextTurn()}
-async function resolveWarRoll(n){const i=activePlayerIndex();await moveWar(i,n);if(war.progress.get(i)>=16&&!war.finished.includes(i))war.finished.push(i);if(war.finished.length===war.participants.length){await finishWar();return}do{war.turnPos=(war.turnPos+1)%war.order.length}while(war.finished.includes(war.order[war.turnPos]));busy=false;renderWar();if(activePlayer().cpu)setTimeout(autoRoll,650)}
-function activePlayerIndex(){return war?war.order[war.turnPos]:turnIndex}
-async function resolveNormalRoll(n){const i=turnIndex,p=players[i];await movePlayer(i,n);if(isCorner(p.pos)){if(p.rank===12&&p.pendingKing){p.done=true;p.pendingKing=false;p.place=players.filter(x=>x.done).length;await showEvent('王位確定','<div class="rankChange" style="color:'+p.color+'">'+p.name+'　'+p.place+'位</div>',850);busy=false;render();nextTurn();return}else await changeRank(i,1,'角で出世')}const group=battleGroupAt(i);if(group){busy=false;await startWar(group);return}busy=false;nextTurn()}
-async function performRoll(force=false){if(busy||!running)return;const p=activePlayer();if(p.cpu&&!force)return;busy=true;render();const root=war?warRoller:roller,o=rollGold(),n=total(o);await settleGold(root,o);document.querySelector('#result').textContent=p.name+'：'+n;log(p.name+' '+o.map(x=>x[2]).join('・')+'='+n);if(war)await resolveWarRoll(n);else await resolveNormalRoll(n);setupGold(root)}
-function nextTurn(){if(players.filter(x=>!x.done).length<=1){const last=players.find(x=>!x.done);if(last){last.done=true;last.place=4}running=false;render();return}do{turnIndex=(turnIndex+1)%4}while(players[turnIndex].done);render();if(players[turnIndex].cpu)setTimeout(autoRoll,650)}
-async function autoRoll(){if(busy||!running)return;const root=war?warRoller:roller;for(let i=0;i<5;i++){spinGold(root,Math.random()*6);clack();await sleep(90)}await performRoll(true)}
-function bindRoller(root,button){const state={on:false,cx:0,cy:0,last:0};root.addEventListener('pointerdown',e=>{if(!running||busy||activePlayer().cpu)return;initAudio();const r=root.getBoundingClientRect();state.on=true;state.cx=r.left+r.width/2;state.cy=r.top+r.height/2;state.last=Math.atan2(e.clientY-state.cy,e.clientX-state.cx);root.setPointerCapture(e.pointerId)});root.addEventListener('pointermove',e=>{if(!state.on)return;const a=Math.atan2(e.clientY-state.cy,e.clientX-state.cx),d=a-state.last;state.last=a;spinGold(root,a);if(Math.abs(d)>.04)clack()});root.addEventListener('pointerup',()=>{if(!state.on)return;state.on=false;performRoll()});button.addEventListener('click',()=>performRoll())}
-bindRoller(roller,document.querySelector('#rollButton'));bindRoller(warRoller,document.querySelector('#warRollButton'));
-function randomNames(){const pool=[...NAME_POOL].sort(()=>Math.random()-.5).slice(0,4),h=+document.querySelector('#humanCount').value,root=document.querySelector('#names');root.innerHTML='';for(let i=0;i<4;i++){const e=document.createElement('div');e.className='namebox';e.innerHTML='<b style="color:'+COLORS[i]+'">席'+(i+1)+' '+(i<h?'人間':'自動')+'</b><input id="nm'+i+'" value="'+pool[i]+'">';root.appendChild(e)}}
-document.querySelector('#randomNames').onclick=randomNames;document.querySelector('#humanCount').onchange=randomNames;randomNames();
-async function orderPlayers(){let cand=[0,1,2,3];while(true){const scores=cand.map(i=>[i,total(rollGold())]),max=Math.max(...scores.map(x=>x[1])),top=scores.filter(x=>x[1]===max).map(x=>x[0]);scores.forEach(x=>log(players[x[0]].name+'='+x[1]));if(top.length===1){const firstSeat=players[top[0]].seat;players.sort((a,b)=>((a.seat-firstSeat+4)%4)-((b.seat-firstSeat+4)%4));turnIndex=0;await showEvent('先攻','<b style="color:'+players[0].color+'">'+players[0].name+'</b><div class="small">ここから右回り</div>',700);return}cand=top;log('1位同点。振り直し')}}
-document.querySelector('#start').onclick=async()=>{initAudio();const h=+document.querySelector('#humanCount').value;players=[0,1,2,3].map(i=>({name:document.querySelector('#nm'+i).value||NAME_POOL[i],seat:i,pos:CORNERS[i],rank:0,color:COLORS[i],sleeve:SLEEVES[i],cpu:i>=h,done:false,place:null,pendingKing:false}));logEl.innerHTML='';running=false;busy=true;war=null;setupGold(roller);setupGold(warRoller);render();await orderPlayers();running=true;busy=false;render();if(players[0].cpu)setTimeout(autoRoll,650)};
-window.addEventListener('resize',()=>{setupGold(roller);setupGold(warRoller)});setupGold(roller);setupGold(warRoller);renderLadder();
-</script></body></html>
+<body>
+<main class="app">
+  <header>
+    <h1>まわり将棋</h1>
+    <p class="sub">v1.0 base — 盤上戦争・4人対戦</p>
+  </header>
+
+  <section id="setup" class="card">
+    <div class="setup-row">
+      <label for="humanCount">人間の人数</label>
+      <select id="humanCount">
+        <option value="1">1人</option><option value="2">2人</option>
+        <option value="3">3人</option><option value="4">4人</option>
+      </select>
+      <button id="randomNames" class="secondary">名前をランダム</button>
+    </div>
+    <div id="nameGrid" class="name-grid"></div>
+    <button id="startButton">ゲーム開始</button>
+  </section>
+
+  <section class="card game-card">
+    <div class="board-row">
+      <div class="board-column">
+        <div id="board" aria-label="9×9の将棋盤">
+          <div id="warShade" class="war-shade"></div>
+          <div id="hand" class="hand"></div>
+          <div id="event" class="event"></div>
+        </div>
+      </div>
+      <aside id="ladder" class="ladder">
+        <h2>出世表</h2>
+        <div id="rankRows"></div>
+      </aside>
+    </div>
+
+    <div id="turnBox" class="turn-box">開始前</div>
+    <div id="roller" class="roller" aria-label="金駒を振る場所">
+      <div id="rollerHint" class="roller-hint">金をくるくる回して<br>指を離す</div>
+    </div>
+    <button id="rollButton" class="roll-button" disabled>▶ あなたが金を振る</button>
+    <button id="audioButton" class="audio-button">音を再開</button>
+    <div id="result" class="result"></div>
+  </section>
+
+  <section class="card"><div id="players" class="players"></div></section>
+  <section class="card"><div id="log" class="log"></div></section>
+</main>
+<script src="game.js"></script>
+</body>
+</html>

@@ -149,7 +149,7 @@ async function showRankChange(playerIndex,delta,label){const p=players[playerInd
 function oppositeGroupFor(playerIndex){
   const p=players[playerIndex],coord=COORDS[p.pos];
   if(isCorner(p.pos))return [];
-  return players.map((q,i)=>({q,i,coord:COORDS[q.pos]})).filter(x=>!x.q.done&&i!==playerIndex&&((coord[0]===0&&x.coord[0]===8&&coord[1]===x.coord[1])||(coord[0]===8&&x.coord[0]===0&&coord[1]===x.coord[1])||(coord[1]===0&&x.coord[1]===8&&coord[0]===x.coord[0])||(coord[1]===8&&x.coord[1]===0&&coord[0]===x.coord[0]))).map(x=>x.i);
+  return players.map((q,i)=>({q,i,coord:COORDS[q.pos]})).filter(x=>!x.q.done&&x.i!==playerIndex&&((coord[0]===0&&x.coord[0]===8&&coord[1]===x.coord[1])||(coord[0]===8&&x.coord[0]===0&&coord[1]===x.coord[1])||(coord[1]===0&&x.coord[1]===8&&coord[0]===x.coord[0])||(coord[1]===8&&x.coord[1]===0&&coord[0]===x.coord[0]))).map(x=>x.i);
 }
 function warParticipantsFor(playerIndex){
   const enemies=oppositeGroupFor(playerIndex);if(!enemies.length)return [];
@@ -192,7 +192,7 @@ async function resolveWarRoll(value){
 async function resolveNormalRoll(value){
   const p=players[turnIndex];await moveNormal(turnIndex,value);
   if(isCorner(p.pos)){
-    if(p.rank===12&&p.pendingKing){p.pendingKing=false;p.done=true;p.place=players.filter(x=>x.done).length;await showEvent('王位確定',`<b style="color:${p.color}">${p.name}　${p.place}位で上がり</b>`,900);busy=false;nextTurn();return;}
+    if(p.rank===12&&p.pendingKing){p.pendingKing=false;p.done=true;p.place=players.filter(x=>x.done).length+1;await showEvent('王位確定',`<b style="color:${p.color}">${p.name}　${p.place}位で上がり</b>`,900);busy=false;nextTurn();return;}
     await showRankChange(turnIndex,1,'角で出世');
   }
   const participants=warParticipantsFor(turnIndex);

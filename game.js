@@ -1,4 +1,4 @@
-// v1.0.6: 効果音はこのファイル内に内蔵されています。audioフォルダは不要です。
+// v1.0.7: 効果音はこのファイル内に内蔵されています。audioフォルダは不要です。
 'use strict';
 
 const COLORS=['#b8493f','#315f8c','#668447','#8a5b91'];
@@ -64,43 +64,66 @@ function offsetFor(index,count){
   return (patterns[count]||patterns[4])[index]||[0,0];
 }
 
-async function ensureAudio(){
+async function ensureAudio(playConfirmation=false){
   try{
-    if(!audioContext)audioContext=new (window.AudioContext||window.webkitAudioContext)();
-    if(audioContext.state!=='running'){
-      const resumePromise=audioContext.resume();
-      await Promise.race([resumePromise,sleep(180)]);
-      if(audioContext.state==='running')audioButton.classList.remove('show');
-      else audioButton.classList.add('show');
+    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+    if(!AudioContextClass)throw new Error('このブラウザは音声に対応していません');
+    if(!audioContext||audioContext.state==='closed')audioContext=new AudioContextClass();
+    if(audioContext.state==='suspended')await audioContext.resume();
+
+    // iPhone Safariでは、操作直後に実音を一度流すことで音声出力が有効になる。
+    if(audioContext.state==='running'){
+      const buffer=audioContext.createBuffer(1,1,audioContext.sampleRate);
+      const source=audioContext.createBufferSource();
+      source.buffer=buffer;
+      source.connect(audioContext.destination);
+      source.start(0);
+      audioButton.classList.remove('show');
+      if(playConfirmation)playWoodConfirmation();
+      return true;
     }
-  }catch(_){audioButton.classList.add('show');}
+  }catch(error){
+    console.warn('音声を開始できませんでした',error);
+  }
+  audioButton.classList.add('show');
+  return false;
 }
-function tone(freq,duration=.04,volume=.025,type='triangle'){
+function tone(freq,duration=.04,volume=.025,type='triangle',delay=0){
   if(!audioContext||audioContext.state!=='running')return;
-  const osc=audioContext.createOscillator(),gain=audioContext.createGain();
-  osc.type=type;osc.frequency.value=freq;gain.gain.value=volume;
-  osc.connect(gain);gain.connect(audioContext.destination);osc.start();
-  gain.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+duration);
-  osc.stop(audioContext.currentTime+duration);
+  const startAt=audioContext.currentTime+delay;
+  const osc=audioContext.createOscillator();
+  const gain=audioContext.createGain();
+  osc.type=type;
+  osc.frequency.setValueAtTime(freq,startAt);
+  gain.gain.setValueAtTime(Math.max(.0001,volume),startAt);
+  gain.gain.exponentialRampToValueAtTime(.0001,startAt+duration);
+  osc.connect(gain);
+  gain.connect(audioContext.destination);
+  osc.start(startAt);
+  osc.stop(startAt+duration+.02);
+}
+function playWoodConfirmation(){
+  tone(190,.07,.055,'triangle');
+  tone(125,.10,.035,'sine',.045);
 }
 function woodStep(){
-  const base=170+Math.random()*70;
-  tone(base,.055,.025,'triangle');
-  setTimeout(()=>tone(base*.62,.07,.015,'sine'),22);
+  const base=165+Math.random()*65;
+  tone(base,.065,.035,'triangle');
+  tone(base*.61,.08,.018,'sine',.022);
 }
 function woodRollTick(speed=0.5){
   const now=performance.now();
-  const minGap=clamp(260-speed*150,105,260);
+  const minGap=clamp(300-speed*145,135,300);
   if(now-gesture.lastSoundAt<minGap)return;
   gesture.lastSoundAt=now;
-  const variants=[145,165,185,205];
+  const variants=[140,158,178,198];
   const base=variants[Math.floor(Math.random()*variants.length)];
-  tone(base,.06,.018+Math.random()*.007,'triangle');
-  if(Math.random()<.45)setTimeout(()=>tone(base*.7,.055,.011,'sine'),28);
+  tone(base,.065,.028+Math.random()*.008,'triangle');
+  if(Math.random()<.45)tone(base*.68,.065,.014,'sine',.028);
 }
 function clack(){woodStep();}
-function thud(){tone(105,.11,.045,'triangle');setTimeout(()=>tone(72,.12,.018,'sine'),28);}
-function whoosh(){tone(350,.07,.015,'triangle');setTimeout(()=>tone(220,.1,.012,'sine'),45);}
+function thud(){tone(108,.12,.06,'triangle');tone(70,.14,.025,'sine',.03);}
+function whoosh(){tone(330,.075,.025,'triangle');tone(210,.11,.018,'sine',.045);}
 
 function physicalDisplay(player){
   const same=players.filter(p=>!p.done&&p.rank===player.rank);
@@ -317,7 +340,7 @@ function nextTurn(){
   do{turnIndex=(turnIndex+1)%players.length;}while(players[turnIndex].done);render();if(!players[turnIndex].cpu&&navigator.vibrate)navigator.vibrate(80);if(players[turnIndex].cpu)setTimeout(autoRoll,650);
 }
 
-roller.addEventListener('pointerdown',async event=>{if(!running||busy)return;const index=war?currentWarPlayerIndex():turnIndex;if(players[index].cpu)return;await ensureAudio();const rect=roller.getBoundingClientRect();gesture.active=true;gesture.cx=rect.left+rect.width/2;gesture.cy=rect.top+rect.height/2;gesture.last=Math.atan2(event.clientY-gesture.cy,event.clientX-gesture.cx);gesture.total=0;roller.setPointerCapture(event.pointerId);rollerHint.style.opacity='.25';});
+roller.addEventListener('pointerdown',async event=>{if(!running||busy)return;const index=war?currentWarPlayerIndex():turnIndex;if(players[index].cpu)return;await ensureAudio(false);const rect=roller.getBoundingClientRect();gesture.active=true;gesture.cx=rect.left+rect.width/2;gesture.cy=rect.top+rect.height/2;gesture.last=Math.atan2(event.clientY-gesture.cy,event.clientX-gesture.cx);gesture.total=0;roller.setPointerCapture(event.pointerId);rollerHint.style.opacity='.25';});
 roller.addEventListener('pointermove',event=>{
   if(!gesture.active)return;
   const angle=Math.atan2(event.clientY-gesture.cy,event.clientX-gesture.cx);
@@ -332,9 +355,14 @@ roller.addEventListener('pointermove',event=>{
 roller.addEventListener('pointerup',async()=>{if(!gesture.active)return;gesture.active=false;rollerHint.style.opacity='1';await performRoll();});
 roller.addEventListener('pointercancel',()=>{gesture.active=false;rollerHint.style.opacity='1';});
 rollButton.addEventListener('click',performRoll);
-audioButton.addEventListener('click',ensureAudio);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&audioContext&&audioContext.state!=='running')audioButton.classList.add('show');});
-document.addEventListener('pointerdown',()=>{if(audioContext&&audioContext.state!=='running')ensureAudio();},{capture:true,passive:true});
+audioButton.addEventListener('click',async()=>{
+  const ok=await ensureAudio(true);
+  if(ok){audioButton.textContent='音が出ました';setTimeout(()=>audioButton.textContent='音を確認・再開',1200);}
+});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&(!audioContext||audioContext.state!=='running'))audioButton.classList.add('show');});
+document.addEventListener('pointerdown',()=>{if(!audioContext||audioContext.state!=='running')ensureAudio(false);},{capture:true,passive:true});
+document.addEventListener('touchstart',()=>{if(!audioContext||audioContext.state!=='running')ensureAudio(false);},{capture:true,passive:true});
+window.addEventListener('pageshow',()=>{if(!audioContext||audioContext.state!=='running')audioButton.classList.add('show');});
 
 function randomNames(){
   const shuffled=[...NAME_POOL].sort(()=>Math.random()-.5).slice(0,4);
@@ -359,7 +387,7 @@ function prepareNames(){
 async function orderPlayers(){let candidates=[0,1,2,3];while(true){const scored=candidates.map(i=>[i,totalGold(goldRoll())]);scored.forEach(([i,s])=>log(`順番決め：${players[i].name} = ${s}`));const max=Math.max(...scored.map(x=>x[1])),top=scored.filter(x=>x[1]===max).map(x=>x[0]);if(top.length===1){const firstSeat=players[top[0]].seat;players.sort((a,b)=>((a.seat-firstSeat+4)%4)-((b.seat-firstSeat+4)%4));turnIndex=0;await showEvent('先攻',`<b style="color:${players[0].color}">${players[0].name}</b><br>ここから右回り`,800);return;}candidates=top;log('1位同点。振り直し');}}
 
 document.querySelector('#randomNames').addEventListener('click',randomNames);
-document.querySelector('#startButton').addEventListener('click',async()=>{await ensureAudio();const humans=Number(document.querySelector('#humanCount').value);players=[0,1,2,3].map(i=>({name:document.querySelector(`#name${i}`).value||NAME_POOL[i],seat:i,pos:CORNERS[i],rank:0,color:COLORS[i],sleeve:SLEEVES[i],cpu:i>=humans,isYou:i===0,done:false,place:null,pendingKing:false}));logEl.innerHTML='';resultEl.textContent='';war=null;running=false;busy=true;warShade.classList.remove('show');setupGolds();render();await orderPlayers();running=true;busy=false;render();if(!players[0].cpu&&navigator.vibrate)navigator.vibrate(80);if(players[0].cpu)setTimeout(autoRoll,650);});
+document.querySelector('#startButton').addEventListener('click',async()=>{await ensureAudio(true);const humans=Number(document.querySelector('#humanCount').value);players=[0,1,2,3].map(i=>({name:document.querySelector(`#name${i}`).value||NAME_POOL[i],seat:i,pos:CORNERS[i],rank:0,color:COLORS[i],sleeve:SLEEVES[i],cpu:i>=humans,isYou:i===0,done:false,place:null,pendingKing:false}));logEl.innerHTML='';resultEl.textContent='';war=null;running=false;busy=true;warShade.classList.remove('show');setupGolds();render();await orderPlayers();running=true;busy=false;render();if(!players[0].cpu&&navigator.vibrate)navigator.vibrate(80);if(players[0].cpu)setTimeout(autoRoll,650);});
 window.addEventListener('resize',setupGolds);
 
 makeBoard();prepareNames();setupGolds();renderLadder();updateUI();

@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>まわり将棋 v1.0.2</title>
+  <title>まわり将棋 v1.0.4</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main class="app">
   <header>
     <h1>まわり将棋</h1>
-    <p class="sub">v1.0.2 — CPU停止・盤面拡大修正版</p>
+    <p class="sub">v1.0.4 — 向き・手・出世表・木駒音 改良版</p>
   </header>
 
   <section id="setup" class="card">
     <div class="setup-row">
-      <label for="humanCount">人間の人数</label>
+      <label for="humanCount">遊ぶ人数</label>
       <select id="humanCount">
         <option value="1">1人</option><option value="2">2人</option>
         <option value="3">3人</option><option value="4">4人</option>
@@ -31,7 +31,12 @@
       <div class="board-column">
         <div id="board" aria-label="9×9の将棋盤">
           <div id="warShade" class="war-shade"></div>
-          <div id="hand" class="hand"></div>
+          <div id="hand" class="hand" aria-hidden="true">
+            <span class="hand-sleeve"></span>
+            <span class="hand-palm"></span>
+            <span class="hand-finger hand-index"></span>
+            <span class="hand-finger hand-thumb"></span>
+          </div>
           <div id="event" class="event"></div>
         </div>
       </div>

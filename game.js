@@ -105,8 +105,8 @@ function tone(freq,duration=.04,volume=.025,type='triangle',delay=0){
 function woodStep(){
   // 初期版の、丸く短い「コト」
   const base=170+Math.random()*70;
-  tone(base,.055,.150,'triangle');
-  setTimeout(()=>tone(base*.62,.07,.090,'sine'),22);
+  tone(base,.055,.225,'triangle');
+  setTimeout(()=>tone(base*.62,.07,.135,'sine'),22);
 }
 
 function woodRollTick(speed=0.5){
@@ -117,9 +117,9 @@ function woodRollTick(speed=0.5){
   gesture.lastSoundAt=now;
   const variants=[145,165,185,205];
   const base=variants[Math.floor(Math.random()*variants.length)];
-  tone(base,.06,.108+Math.random()*.042,'triangle');
+  tone(base,.06,.162+Math.random()*.063,'triangle');
   if(Math.random()<.45){
-    setTimeout(()=>tone(base*.7,.055,.066,'sine'),28);
+    setTimeout(()=>tone(base*.7,.055,.099,'sine'),28);
   }
 }
 
@@ -128,13 +128,13 @@ function clack(){
 }
 
 function thud(){
-  tone(105,.11,.270,'triangle');
-  setTimeout(()=>tone(72,.12,.108,'sine'),28);
+  tone(105,.11,.405,'triangle');
+  setTimeout(()=>tone(72,.12,.162,'sine'),28);
 }
 
 function whoosh(){
-  tone(350,.07,.090,'triangle');
-  setTimeout(()=>tone(220,.10,.072,'sine'),45);
+  tone(350,.07,.135,'triangle');
+  setTimeout(()=>tone(220,.10,.108,'sine'),45);
 }
 
 // 背景音・戦争BGM・戦争開始音は使わない
@@ -437,8 +437,17 @@ function nextTurn(){
   do{turnIndex=(turnIndex+1)%players.length;}while(players[turnIndex].done);render();if(!players[turnIndex].cpu&&navigator.vibrate)navigator.vibrate(80);if(players[turnIndex].cpu)setTimeout(autoRoll,650);
 }
 
+
+function lockPageForRoll(){
+  document.body.classList.add('rolling-lock');
+}
+function unlockPageAfterRoll(){
+  document.body.classList.remove('rolling-lock');
+}
+
 roller.addEventListener('pointerdown',async event=>{
   if(!running||busy)return;
+  lockPageForRoll();
   const index=war?currentWarPlayerIndex():turnIndex;
   if(players[index].cpu)return;
   await ensureAudio();
@@ -455,6 +464,7 @@ roller.addEventListener('pointerdown',async event=>{
 });
 roller.addEventListener('pointermove',event=>{
   if(!gesture.active)return;
+  event.preventDefault();
   const angle=Math.atan2(event.clientY-gesture.cy,event.clientX-gesture.cx);
   let delta=angle-gesture.last;
   if(delta>Math.PI)delta-=Math.PI*2;
@@ -467,6 +477,7 @@ roller.addEventListener('pointermove',event=>{
 roller.addEventListener('pointerup',async()=>{
   if(!gesture.active)return;
   gesture.active=false;
+  unlockPageAfterRoll();
   rollerHint.style.opacity='1';
   const tier=war?battleGaugeTier(gesture.gaugePos):0;
   stopBattleGauge();
@@ -474,6 +485,7 @@ roller.addEventListener('pointerup',async()=>{
 });
 roller.addEventListener('pointercancel',()=>{
   gesture.active=false;
+  unlockPageAfterRoll();
   rollerHint.style.opacity='1';
   stopBattleGauge();
 });
@@ -523,3 +535,7 @@ makeBoard();prepareNames();setupGolds();renderLadder();updateUI();
 
 window.addEventListener('error',e=>{resultEl.textContent='エラー：'+e.message;log('エラー：'+e.message);busy=false;try{render()}catch(_){}});
 window.addEventListener('unhandledrejection',e=>{const msg=e.reason?.message||String(e.reason);resultEl.textContent='エラー：'+msg;log('エラー：'+msg);busy=false;try{render()}catch(_){}});
+
+roller.addEventListener('touchmove',event=>{
+  if(gesture.active)event.preventDefault();
+},{passive:false});

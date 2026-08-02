@@ -102,77 +102,44 @@ function tone(freq,duration=.04,volume=.025,type='triangle',delay=0){
   osc.stop(start+duration+.01);
 }
 
-function noiseHit(duration=.06,volume=.02,delay=0){
-  if(!audioContext||audioContext.state!=='running')return;
-  const length=Math.max(1,Math.floor(audioContext.sampleRate*duration));
-  const buffer=audioContext.createBuffer(1,length,audioContext.sampleRate);
-  const data=buffer.getChannelData(0);
-  for(let i=0;i<length;i++){
-    const t=i/length;
-    data[i]=(Math.random()*2-1)*Math.pow(1-t,4);
-  }
-  const source=audioContext.createBufferSource();
-  const gain=audioContext.createGain();
-  source.buffer=buffer;
-  gain.gain.setValueAtTime(volume,audioContext.currentTime+delay);
-  gain.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+delay+duration);
-  source.connect(gain);
-  gain.connect(audioContext.destination);
-  source.start(audioContext.currentTime+delay);
-}
-
 function woodStep(){
-  // 盤上を1マス進む、短く乾いた木の「コト」
-  const base=150+Math.random()*22;
-  tone(base,.075,.058,'sine');
-  tone(base*1.42,.042,.016,'triangle',.006);
-  noiseHit(.038,.010,.004);
+  // 初期版の、丸く短い「コト」
+  const base=170+Math.random()*70;
+  tone(base,.055,.025,'triangle');
+  setTimeout(()=>tone(base*.62,.07,.015,'sine'),22);
 }
 
 function woodRollTick(speed=0.5){
-  // 金駒を手の中で転がす、少し不揃いな木音
+  // 初期版の音量・音色・ランダム感
   const now=performance.now();
-  const minGap=clamp(255-speed*105,118,255);
+  const minGap=clamp(260-speed*150,105,260);
   if(now-gesture.lastSoundAt<minGap)return;
   gesture.lastSoundAt=now;
-
-  const variants=[128,140,153,168];
+  const variants=[145,165,185,205];
   const base=variants[Math.floor(Math.random()*variants.length)];
-  tone(base,.080,.046,'sine');
-  tone(base*.73,.058,.017,'triangle',.013);
-  noiseHit(.032,.008,.006);
+  tone(base,.06,.018+Math.random()*.007,'triangle');
+  if(Math.random()<.45){
+    setTimeout(()=>tone(base*.7,.055,.011,'sine'),28);
+  }
 }
 
-function clack(){woodStep();}
+function clack(){
+  woodStep();
+}
 
 function thud(){
-  // 金駒が止まる音
-  tone(108,.13,.050,'sine');
-  tone(76,.10,.017,'triangle',.018);
-  noiseHit(.055,.012,.004);
+  tone(105,.11,.045,'triangle');
+  setTimeout(()=>tone(72,.12,.018,'sine'),28);
 }
 
 function whoosh(){
-  // 投げる直前のごく小さな動き。目立たせない。
-  noiseHit(.07,.006);
+  tone(350,.07,.015,'triangle');
+  setTimeout(()=>tone(220,.10,.012,'sine'),45);
 }
 
-function warStartKnock(){
-  // BGMではなく、戦争開始を知らせる乾いた一発だけ
-  tone(92,.18,.065,'sine');
-  tone(184,.07,.018,'triangle',.010);
-  noiseHit(.075,.020,.002);
-}
-
-async function enterWarSound(){
-  if(!audioEnabled)return;
-  warStartKnock();
-  await sleep(190);
-}
-
-async function leaveWarSound(){
-  // 背景音・戦争BGMは使わない
-}
+// 背景音・戦争BGM・戦争開始音は使わない
+async function enterWarSound(){}
+async function leaveWarSound(){}
 
 function startBattleGauge(){
   cancelAnimationFrame(gesture.gaugeRaf);

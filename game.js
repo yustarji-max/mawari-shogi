@@ -18,6 +18,8 @@ const turnBox=document.querySelector('#turnBox');
 const rollButton=document.querySelector('#rollButton');
 const audioButton=document.querySelector('#audioButton');
 const resultEl=document.querySelector('#result');
+const battleGauge=document.querySelector('#battleGauge');
+const battleGaugeMarker=document.querySelector('#battleGaugeMarker');
 const logEl=document.querySelector('#log');
 
 let players=[];
@@ -26,7 +28,10 @@ let running=false;
 let busy=false;
 let war=null;
 let audioContext=null;
-let gesture={active:false,cx:0,cy:0,last:0,total:0,lastSoundAt:0};
+let gesture={
+  active:false,cx:0,cy:0,last:0,total:0,lastSoundAt:0,
+  gaugePos:.08,gaugeDir:1,gaugeLastFrame:0,gaugeRaf:null
+};
 
 function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 function log(text){const el=document.createElement('div');el.textContent=text;logEl.appendChild(el);logEl.scrollTop=logEl.scrollHeight;}
@@ -71,8 +76,8 @@ const ambientAudio=new Audio(AMBIENT_URI);
 const warMusicAudio=new Audio(WAR_MUSIC_URI);
 ambientAudio.loop=true;
 warMusicAudio.loop=true;
-ambientAudio.volume=0.22;
-warMusicAudio.volume=0.34;
+ambientAudio.volume=0.105;
+warMusicAudio.volume=0.20;
 ambientAudio.playsInline=true;
 warMusicAudio.playsInline=true;
 let audioEnabled=false;
@@ -113,19 +118,22 @@ function tone(freq,duration=.04,volume=.025,type='triangle',delay=0){
 }
 
 function woodStep(finalStep=false){
-  const base=finalStep?125:155+Math.random()*35;
-  tone(base,finalStep?.105:.072,finalStep?.032:.020,'sine');
-  tone(base*1.7,finalStep?.05:.035,finalStep?.008:.006,'triangle',.008);
+  // 柔らかい木駒の「コト」。環境音より前に聞こえる音量。
+  const base=finalStep?138:168+Math.random()*24;
+  tone(base,finalStep?.115:.085,finalStep?.070:.052,'sine');
+  tone(base*1.48,finalStep?.070:.050,finalStep?.020:.015,'triangle',.006);
+  tone(base*.72,finalStep?.090:.060,finalStep?.018:.012,'sine',.014);
 }
 function woodRollTick(speed=0.5){
   const now=performance.now();
-  const minGap=clamp(330-speed*150,150,330);
+  const minGap=clamp(270-speed*115,125,270);
   if(now-gesture.lastSoundAt<minGap)return;
   gesture.lastSoundAt=now;
-  const variants=[135,148,162,178];
+  const variants=[132,146,160,176];
   const base=variants[Math.floor(Math.random()*variants.length)];
-  tone(base,.065,.014+Math.random()*.005,'sine');
-  if(Math.random()<.38)tone(base*.72,.045,.007,'triangle',.018);
+  tone(base,.085,.034,'sine');
+  tone(base*.74,.060,.014,'triangle',.014);
+  if(Math.random()<.35)tone(base*1.35,.035,.008,'sine',.026);
 }
 function clack(finalStep=false){woodStep(finalStep);}
 function thud(){tone(105,.13,.038,'sine');tone(72,.10,.012,'triangle',.018);}
@@ -144,7 +152,7 @@ async function enterWarSound(){
   try{
     await fadeAudio(ambientAudio,0,260);
     ambientAudio.pause();
-    ambientAudio.volume=.22;
+    ambientAudio.volume=.105;
     warMusicAudio.currentTime=0;
     await warMusicAudio.play();
   }catch(_ ){audioButton.classList.add('show');}
@@ -155,11 +163,43 @@ async function leaveWarSound(){
     await fadeAudio(warMusicAudio,0,220);
     warMusicAudio.pause();
     warMusicAudio.currentTime=0;
-    warMusicAudio.volume=.34;
+    warMusicAudio.volume=.20;
     await ambientAudio.play();
     ambientAudio.volume=0;
-    await fadeAudio(ambientAudio,.22,420);
+    await fadeAudio(ambientAudio,.105,420);
   }catch(_ ){audioButton.classList.add('show');}
+}
+
+
+function startBattleGauge(){
+  cancelAnimationFrame(gesture.gaugeRaf);
+  gesture.gaugePos=.05+Math.random()*.15;
+  gesture.gaugeDir=Math.random()<.5?1:-1;
+  gesture.gaugeLastFrame=0;
+  battleGaugeMarker.style.left=`${gesture.gaugePos*100}%`;
+  gesture.gaugeRaf=requestAnimationFrame(updateBattleGauge);
+}
+function stopBattleGauge(){
+  cancelAnimationFrame(gesture.gaugeRaf);
+  gesture.gaugeRaf=null;
+}
+function updateBattleGauge(ts){
+  if(!gesture.active||!war)return;
+  if(!gesture.gaugeLastFrame)gesture.gaugeLastFrame=ts;
+  const dt=Math.min(.032,(ts-gesture.gaugeLastFrame)/1000);
+  gesture.gaugeLastFrame=ts;
+  const speed=2.10;
+  gesture.gaugePos+=gesture.gaugeDir*speed*dt;
+  if(gesture.gaugePos>=.98){gesture.gaugePos=.98;gesture.gaugeDir=-1;}
+  if(gesture.gaugePos<=.02){gesture.gaugePos=.02;gesture.gaugeDir=1;}
+  battleGaugeMarker.style.left=`${gesture.gaugePos*100}%`;
+  gesture.gaugeRaf=requestAnimationFrame(updateBattleGauge);
+}
+function battleGaugeTier(pos){
+  const distance=Math.abs(pos-.5);
+  if(distance<=.02)return 2;
+  if(distance<=.05)return 1;
+  return 0;
 }
 
 function physicalDisplay(player){
@@ -208,8 +248,19 @@ function updateUI(){
     rollButton.textContent=p.isYou?'▶ あなたが金を振る':`▶ ${p.name}が金を振る`;
     rollButton.disabled=busy||p.cpu;
     roller.style.opacity=p.cpu?'.55':'1';
+    const showBattleGauge=Boolean(war&&!p.cpu);
+    battleGauge.classList.toggle('show',showBattleGauge);
+    rollerHint.innerHTML=war
+      ? '勝負振り<br><small>金を回しながら中央線を狙う</small>'
+      : '金をくるくる回して<br>指を離す';
   }
-  else{turnBox.textContent='開始前';turnBox.style.borderColor='transparent';rollButton.disabled=true;}
+  else{
+    turnBox.textContent='開始前';
+    turnBox.style.borderColor='transparent';
+    rollButton.disabled=true;
+    battleGauge.classList.remove('show');
+    rollerHint.innerHTML='金をくるくる回して<br>指を離す';
+  }
   renderPlayers();renderLadder();
 }
 function render(){renderPieces();updateUI();}
@@ -247,23 +298,35 @@ async function moveNormal(playerIndex,steps){
   for(let i=0;i<steps;i++){
     p.pos=(p.pos+1)%32;
     await showHand(p.pos,playerIndex,true);
-    clack(i===steps-1);
     renderPieces();
-    await sleep(185);
+    clack(false);
+    await sleep(190);
   }
   hand.classList.remove('show');
   await sleep(90);
   renderPieces();
 }
 
-function goldRoll(){
+function goldRoll(tier=0){
   const result=[];
   for(let i=0;i<4;i++){
     const x=Math.random();
-    if(x<.47)result.push({type:'face',value:1,label:'表'});
-    else if(x<.94)result.push({type:'back',value:0,label:'裏'});
-    else if(x<.98)result.push({type:'side',value:5,label:'横'});
-    else result.push({type:'vertical',value:10,label:'縦'});
+    if(tier===2){
+      if(x<.39)result.push({type:'face',value:1,label:'表'});
+      else if(x<.78)result.push({type:'back',value:0,label:'裏'});
+      else if(x<.91)result.push({type:'side',value:5,label:'横'});
+      else result.push({type:'vertical',value:10,label:'縦'});
+    }else if(tier===1){
+      if(x<.43)result.push({type:'face',value:1,label:'表'});
+      else if(x<.86)result.push({type:'back',value:0,label:'裏'});
+      else if(x<.95)result.push({type:'side',value:5,label:'横'});
+      else result.push({type:'vertical',value:10,label:'縦'});
+    }else{
+      if(x<.47)result.push({type:'face',value:1,label:'表'});
+      else if(x<.94)result.push({type:'back',value:0,label:'裏'});
+      else if(x<.98)result.push({type:'side',value:5,label:'横'});
+      else result.push({type:'vertical',value:10,label:'縦'});
+    }
   }
   return result;
 }
@@ -314,9 +377,9 @@ async function moveWarPlayer(playerIndex,steps){
     const old=war.progress.get(playerIndex);
     if(old>=16)break;
     war.progress.set(playerIndex,old+1);
-    clack(s===steps-1 || old+1>=16);
     renderPieces();
-    await sleep(185);
+    clack(false);
+    await sleep(190);
   }
 }
 async function resolveWarRoll(value){
@@ -360,14 +423,14 @@ async function resolveNormalRoll(value){
   busy=false;nextTurn();
 }
 
-async function performRoll(){
+async function performRoll(battleTier=0){
   if(busy||!running)return;
   const index=war?currentWarPlayerIndex():turnIndex;
   const p=players[index];
   busy=true;updateUI();
   try{
     if(!p.cpu) await ensureAudio();
-    const golds=goldRoll();
+    const golds=goldRoll(war?battleTier:0);
     await settleGolds(golds);
     const value=totalGold(golds);
     resultEl.textContent=`${p.name}：${value}`;
@@ -392,14 +455,34 @@ async function autoRoll(){
     woodRollTick(.45);
     await sleep(165+Math.random()*45);
   }
-  await performRoll();
+  let tier=0;
+  if(war){
+    const r=Math.random();
+    tier=r<.08?2:r<.28?1:0;
+  }
+  await performRoll(tier);
 }
 function nextTurn(){
   if(players.filter(p=>!p.done).length<=1){const last=players.find(p=>!p.done);if(last){last.done=true;last.place=4;}running=false;render();log('全員の順位が決まりました。');return;}
   do{turnIndex=(turnIndex+1)%players.length;}while(players[turnIndex].done);render();if(!players[turnIndex].cpu&&navigator.vibrate)navigator.vibrate(80);if(players[turnIndex].cpu)setTimeout(autoRoll,650);
 }
 
-roller.addEventListener('pointerdown',async event=>{if(!running||busy)return;const index=war?currentWarPlayerIndex():turnIndex;if(players[index].cpu)return;await ensureAudio();const rect=roller.getBoundingClientRect();gesture.active=true;gesture.cx=rect.left+rect.width/2;gesture.cy=rect.top+rect.height/2;gesture.last=Math.atan2(event.clientY-gesture.cy,event.clientX-gesture.cx);gesture.total=0;roller.setPointerCapture(event.pointerId);rollerHint.style.opacity='.25';});
+roller.addEventListener('pointerdown',async event=>{
+  if(!running||busy)return;
+  const index=war?currentWarPlayerIndex():turnIndex;
+  if(players[index].cpu)return;
+  await ensureAudio();
+  const rect=roller.getBoundingClientRect();
+  gesture.active=true;
+  gesture.cx=rect.left+rect.width/2;
+  gesture.cy=rect.top+rect.height/2;
+  gesture.last=Math.atan2(event.clientY-gesture.cy,event.clientX-gesture.cx);
+  gesture.total=0;
+  gesture.lastSoundAt=0;
+  roller.setPointerCapture(event.pointerId);
+  rollerHint.style.opacity='.25';
+  if(war)startBattleGauge();
+});
 roller.addEventListener('pointermove',event=>{
   if(!gesture.active)return;
   const angle=Math.atan2(event.clientY-gesture.cy,event.clientX-gesture.cx);
@@ -411,9 +494,20 @@ roller.addEventListener('pointermove',event=>{
   spinGolds(angle+gesture.total*.5);
   if(Math.abs(delta)>.025)woodRollTick(Math.min(1,Math.abs(delta)*5));
 });
-roller.addEventListener('pointerup',async()=>{if(!gesture.active)return;gesture.active=false;rollerHint.style.opacity='1';await performRoll();});
-roller.addEventListener('pointercancel',()=>{gesture.active=false;rollerHint.style.opacity='1';});
-rollButton.addEventListener('click',performRoll);
+roller.addEventListener('pointerup',async()=>{
+  if(!gesture.active)return;
+  gesture.active=false;
+  rollerHint.style.opacity='1';
+  const tier=war?battleGaugeTier(gesture.gaugePos):0;
+  stopBattleGauge();
+  await performRoll(tier);
+});
+roller.addEventListener('pointercancel',()=>{
+  gesture.active=false;
+  rollerHint.style.opacity='1';
+  stopBattleGauge();
+});
+rollButton.addEventListener('click',()=>performRoll(0));
 audioButton.addEventListener('click',async()=>{
   const ok=await ensureAudio();
   if(ok){

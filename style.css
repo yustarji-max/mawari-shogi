@@ -197,3 +197,52 @@
 }
 
 .audio-button{background:#5f574e}
+
+.battle-gauge{
+  position:relative;
+  height:30px;
+  margin-top:8px;
+  border:2px solid #766c5f;
+  border-radius:999px;
+  background:#d8d0c4;
+  overflow:hidden;
+  display:none
+}
+.battle-gauge.show{display:block}
+.battle-gauge-zone{
+  position:absolute;
+  left:45%;
+  top:0;
+  bottom:0;
+  width:10%;
+  background:#8f3b3214
+}
+.battle-gauge-center{
+  position:absolute;
+  left:50%;
+  top:0;
+  bottom:0;
+  width:3px;
+  transform:translateX(-50%);
+  background:#8f3b32;
+  z-index:2
+}
+.battle-gauge-marker{
+  position:absolute;
+  top:1px;
+  left:8%;
+  width:22px;
+  height:25px;
+  transform:translateX(-50%);
+  clip-path:polygon(22% 0,78% 0,100% 100%,0 100%);
+  background:linear-gradient(145deg,#f2d39a,#c9944d);
+  border:1px solid #68451d;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:"Yu Mincho","Hiragino Mincho ProN",serif;
+  font-size:11px;
+  font-weight:900;
+  color:#3d2a16;
+  box-shadow:0 2px 6px #0004
+}

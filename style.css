@@ -187,3 +187,11 @@
   color:white;
   font-size:11px
 }
+
+.audio-button{
+  display:inline-block;
+  margin:8px auto 0;
+}
+.audio-button:not(.show){
+  opacity:.78;
+}

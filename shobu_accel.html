@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>勝負振り 加速ゲージテスト</title>
+<style>
+:root{
+  --bg:#e8e2d8;
+  --panel:#f8f4ec;
+  --wood1:#e4bf80;
+  --wood2:#c99658;
+  --ink:#24211d;
+  --accent:#8f3b32;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif
+}
+main{max-width:620px;margin:auto;padding:12px}
+.card{
+  background:var(--panel);border-radius:18px;padding:14px;margin:10px 0;
+  box-shadow:0 8px 24px #0001
+}
+h1{font-size:25px;margin:2px 0 4px}
+.sub{font-size:13px;color:#756e65;margin:0}
+#status{
+  font-size:21px;font-weight:900;text-align:center;padding:10px;
+  border:3px solid var(--accent);border-radius:14px;color:var(--accent)
+}
+#roller{
+  position:relative;height:235px;border-radius:22px;
+  background:linear-gradient(115deg,var(--wood1),var(--wood2));
+  overflow:hidden;touch-action:none;user-select:none;
+  box-shadow:inset 0 0 28px #6b421925
+}
+#hint{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  text-align:center;font-weight:900;font-size:18px;color:#5e4b34;pointer-events:none
+}
+.gold{
+  position:absolute;width:58px;height:68px;
+  clip-path:polygon(22% 0,78% 0,100% 100%,0 100%);
+  background:linear-gradient(145deg,#f3d49d,#c79149);
+  border:2px solid #68451d;display:flex;align-items:center;justify-content:center;
+  font-family:"Yu Mincho",serif;font-weight:900;font-size:20px;
+  transform:translate(-50%,-50%) rotate(var(--rot,0deg));
+  transition:left .1s,top .1s,transform .25s
+}
+.gold.side{width:68px;height:14px;clip-path:none;border-radius:5px}
+.gold.vertical{width:13px;height:68px;clip-path:none;border-radius:5px}
+.gauge-wrap{margin-top:14px}
+.gauge{
+  position:relative;height:28px;border-radius:999px;background:#d8d0c4;
+  overflow:hidden;border:2px solid #766c5f
+}
+.gauge::before{
+  content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;background:#9f9485;
+  transform:translateX(-50%)
+}
+.marker{
+  position:absolute;top:2px;width:22px;height:20px;border-radius:999px;
+  background:#2f2c28;transform:translateX(-50%);
+  box-shadow:0 2px 6px #0004
+}
+#result{text-align:center;font-size:27px;font-weight:900;min-height:46px;margin-top:8px}
+#judge{text-align:center;font-size:13px;color:#746d64;min-height:24px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;text-align:center}
+.stat{background:#ebe4d9;border-radius:12px;padding:9px}
+.stat b{display:block;font-size:22px}
+button{
+  width:100%;border:0;border-radius:12px;padding:12px;background:#24231f;color:white;
+  font:inherit;font-weight:900
+}
+label{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:10px}
+.note{font-size:12px;color:#756e65;line-height:1.55}
+</style>
+</head>
+<body>
+<main>
+<h1>勝負振り 加速ゲージテスト</h1>
+<p class="sub">速度が上がった区間で指を離すと、大きい目が出やすくなります</p>
+
+<section class="card">
+  <div id="status">金を回しながら、加速した瞬間を狙う</div>
+  <div id="roller">
+    <div id="hint">指でくるくる回してください<br><small>離した瞬間のゲージ速度で判定</small></div>
+  </div>
+
+  <div class="gauge-wrap">
+    <div class="gauge"><div id="marker" class="marker"></div></div>
+  </div>
+
+  <div id="result"></div>
+  <div id="judge"></div>
+</section>
+
+<section class="card stats">
+  <div class="stat">試行<b id="tries">0</b></div>
+  <div class="stat">成功<b id="hits">0</b></div>
+  <div class="stat">平均<b id="avg">0.0</b></div>
+</section>
+
+<section class="card">
+  <button id="sound">音を開始・確認</button>
+  <label><input id="showJudge" type="checkbox"> テスト用に判定を表示する</label>
+  <p class="note">
+    ゲージは左右を往復します。通常は一定速度ですが、毎回異なる位置で短時間だけ急加速します。
+    加速中に指を離せば成功です。成功判定そのものにランダム要素はありません。
+  </p>
+</section>
+</main>
+
+<script>
+'use strict';
+
+const roller=document.querySelector('#roller');
+const hint=document.querySelector('#hint');
+const marker=document.querySelector('#marker');
+const resultEl=document.querySelector('#result');
+const judgeEl=document.querySelector('#judge');
+const triesEl=document.querySelector('#tries');
+const hitsEl=document.querySelector('#hits');
+const avgEl=document.querySelector('#avg');
+const soundButton=document.querySelector('#sound');
+const showJudge=document.querySelector('#showJudge');
+
+let ctx=null,audioReady=false;
+let gesture={
+  active:false,cx:0,cy:0,last:0,total:0,lastRollSound:0,
+  gaugePos:0.08,gaugeDir:1,lastFrame:0,
+  boostStart:0.30,boostEnd:0.42,boosting:false,
+  raf:null
+};
+let tries=0,hits=0,totalScore=0;
+
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+async function ensureAudio(){
+  try{
+    if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();
+    if(ctx.state!=='running')await ctx.resume();
+    audioReady=ctx.state==='running';
+    return audioReady;
+  }catch(_){return false}
+}
+function tone(freq,dur=.06,vol=.02,type='sine',delay=0){
+  if(!audioReady||!ctx||ctx.state!=='running')return;
+  const t=ctx.currentTime+delay,o=ctx.createOscillator(),g=ctx.createGain();
+  o.type=type;o.frequency.setValueAtTime(freq,t);
+  g.gain.setValueAtTime(vol,t);
+  g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+.01);
+}
+function rollSound(speed=.5){
+  const now=performance.now(),gap=clamp(310-speed*130,150,310);
+  if(now-gesture.lastRollSound<gap)return;
+  gesture.lastRollSound=now;
+  const f=[138,151,166,181][Math.floor(Math.random()*4)];
+  tone(f,.08,.024,'sine');
+  if(Math.random()<.42)tone(f*.70,.055,.010,'triangle',.016);
+}
+function landing(){
+  tone(118,.13,.045,'sine');
+  tone(72,.1,.014,'triangle',.02);
+}
+function setupGolds(){
+  roller.querySelectorAll('.gold').forEach(e=>e.remove());
+  const cx=roller.clientWidth/2,cy=roller.clientHeight/2;
+  for(let i=0;i<4;i++){
+    const e=document.createElement('div');
+    e.className='gold';e.textContent='金';
+    const a=i*Math.PI/2;
+    e.style.left=`${cx+Math.cos(a)*48}px`;
+    e.style.top=`${cy+Math.sin(a)*42}px`;
+    roller.appendChild(e);
+  }
+}
+function spin(angle){
+  const list=[...roller.querySelectorAll('.gold')];
+  const cx=roller.clientWidth/2,cy=roller.clientHeight/2;
+  list.forEach((e,i)=>{
+    const a=angle+i*Math.PI/2;
+    e.style.left=`${cx+Math.cos(a)*52}px`;
+    e.style.top=`${cy+Math.sin(a)*44}px`;
+    e.style.setProperty('--rot',`${angle*180/Math.PI+i*32}deg`);
+  });
+}
+function chooseBoostZone(){
+  const width=0.10+Math.random()*0.05;
+  const start=0.12+Math.random()*(0.76-width);
+  gesture.boostStart=start;
+  gesture.boostEnd=start+width;
+}
+function updateGauge(ts){
+  if(!gesture.active)return;
+  if(!gesture.lastFrame)gesture.lastFrame=ts;
+  const dt=Math.min(0.032,(ts-gesture.lastFrame)/1000);
+  gesture.lastFrame=ts;
+
+  const inZone=gesture.gaugePos>=gesture.boostStart&&gesture.gaugePos<=gesture.boostEnd;
+  gesture.boosting=inZone;
+  const speed=inZone?1.55:0.58;
+
+  gesture.gaugePos+=gesture.gaugeDir*speed*dt;
+  if(gesture.gaugePos>=.98){gesture.gaugePos=.98;gesture.gaugeDir=-1}
+  if(gesture.gaugePos<=.02){gesture.gaugePos=.02;gesture.gaugeDir=1}
+
+  marker.style.left=`${gesture.gaugePos*100}%`;
+  gesture.raf=requestAnimationFrame(updateGauge);
+}
+function rollOne(boost){
+  const x=Math.random();
+  if(boost){
+    if(x<.39)return{type:'face',value:1,label:'表'};
+    if(x<.78)return{type:'back',value:0,label:'裏'};
+    if(x<.91)return{type:'side',value:5,label:'横'};
+    return{type:'vertical',value:10,label:'縦'};
+  }
+  if(x<.47)return{type:'face',value:1,label:'表'};
+  if(x<.94)return{type:'back',value:0,label:'裏'};
+  if(x<.98)return{type:'side',value:5,label:'横'};
+  return{type:'vertical',value:10,label:'縦'};
+}
+async function settle(boost){
+  const golds=[rollOne(boost),rollOne(boost),rollOne(boost),rollOne(boost)];
+  const els=[...roller.querySelectorAll('.gold')];
+  els.forEach((e,i)=>{
+    const g=golds[i];
+    e.className='gold '+(g.type==='side'?'side':g.type==='vertical'?'vertical':'');
+    e.textContent=g.type==='back'?'':g.type==='face'?'金':g.label;
+    e.style.left=`${22+i*19}%`;
+    e.style.top='56%';
+    e.style.setProperty('--rot',`${Math.random()*28-14}deg`);
+  });
+  await sleep(480);
+  landing();
+
+  const score=golds.reduce((s,g)=>s+g.value,0);
+  tries++;
+  if(boost)hits++;
+  totalScore+=score;
+
+  resultEl.textContent=`${golds.map(g=>g.label).join('・')} ＝ ${score}`;
+  judgeEl.textContent=showJudge.checked?(boost?'加速中に停止：成功':'通常速度で停止'):'';
+  triesEl.textContent=tries;
+  hitsEl.textContent=hits;
+  avgEl.textContent=(totalScore/tries).toFixed(1);
+}
+
+roller.addEventListener('pointerdown',async e=>{
+  await ensureAudio();
+  const r=roller.getBoundingClientRect();
+  gesture.active=true;
+  gesture.cx=r.left+r.width/2;
+  gesture.cy=r.top+r.height/2;
+  gesture.last=Math.atan2(e.clientY-gesture.cy,e.clientX-gesture.cx);
+  gesture.total=0;
+  gesture.lastRollSound=0;
+  gesture.gaugePos=.06+Math.random()*.12;
+  gesture.gaugeDir=1;
+  gesture.lastFrame=0;
+  chooseBoostZone();
+  roller.setPointerCapture(e.pointerId);
+  hint.style.opacity='.2';
+  resultEl.textContent='';
+  judgeEl.textContent='';
+  cancelAnimationFrame(gesture.raf);
+  gesture.raf=requestAnimationFrame(updateGauge);
+});
+
+roller.addEventListener('pointermove',e=>{
+  if(!gesture.active)return;
+  const a=Math.atan2(e.clientY-gesture.cy,e.clientX-gesture.cx);
+  let d=a-gesture.last;
+  if(d>Math.PI)d-=Math.PI*2;
+  if(d<-Math.PI)d+=Math.PI*2;
+  gesture.total+=Math.abs(d);
+  gesture.last=a;
+  spin(a+gesture.total*.5);
+  const speed=Math.min(1,Math.abs(d)*5);
+  if(Math.abs(d)>.025)rollSound(speed);
+});
+
+roller.addEventListener('pointerup',async()=>{
+  if(!gesture.active)return;
+  gesture.active=false;
+  cancelAnimationFrame(gesture.raf);
+  hint.style.opacity='1';
+  const boost=gesture.boosting;
+  await settle(boost);
+  setTimeout(setupGolds,900);
+});
+
+roller.addEventListener('pointercancel',()=>{
+  gesture.active=false;
+  cancelAnimationFrame(gesture.raf);
+  hint.style.opacity='1';
+  setupGolds();
+});
+
+soundButton.addEventListener('click',async()=>{
+  const ok=await ensureAudio();
+  if(ok){
+    tone(170,.1,.03);
+    soundButton.textContent='音が入りました';
+    setTimeout(()=>soundButton.textContent='音を開始・確認',1100);
+  }
+});
+
+window.addEventListener('resize',setupGolds);
+setupGolds();
+marker.style.left='8%';
+</script>
+</body>
+</html>

@@ -105,8 +105,8 @@ function tone(freq,duration=.04,volume=.025,type='triangle',delay=0){
 function woodStep(){
   // 初期版の、丸く短い「コト」
   const base=170+Math.random()*70;
-  tone(base,.055,.025,'triangle');
-  setTimeout(()=>tone(base*.62,.07,.015,'sine'),22);
+  tone(base,.055,.050,'triangle');
+  setTimeout(()=>tone(base*.62,.07,.030,'sine'),22);
 }
 
 function woodRollTick(speed=0.5){
@@ -117,9 +117,9 @@ function woodRollTick(speed=0.5){
   gesture.lastSoundAt=now;
   const variants=[145,165,185,205];
   const base=variants[Math.floor(Math.random()*variants.length)];
-  tone(base,.06,.018+Math.random()*.007,'triangle');
+  tone(base,.06,.036+Math.random()*.014,'triangle');
   if(Math.random()<.45){
-    setTimeout(()=>tone(base*.7,.055,.011,'sine'),28);
+    setTimeout(()=>tone(base*.7,.055,.022,'sine'),28);
   }
 }
 
@@ -128,13 +128,13 @@ function clack(){
 }
 
 function thud(){
-  tone(105,.11,.045,'triangle');
-  setTimeout(()=>tone(72,.12,.018,'sine'),28);
+  tone(105,.11,.090,'triangle');
+  setTimeout(()=>tone(72,.12,.036,'sine'),28);
 }
 
 function whoosh(){
-  tone(350,.07,.015,'triangle');
-  setTimeout(()=>tone(220,.10,.012,'sine'),45);
+  tone(350,.07,.030,'triangle');
+  setTimeout(()=>tone(220,.10,.024,'sine'),45);
 }
 
 // 背景音・戦争BGM・戦争開始音は使わない

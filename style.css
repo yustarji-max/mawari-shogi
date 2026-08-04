@@ -261,3 +261,116 @@ body.rolling-lock{
 }
 
 .onbu-note{font-size:11px;font-weight:800;color:#7a5b28}.piece{transition:left .16s,top .16s,transform .16s}
+
+.app-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px
+}
+.rules-button{
+  width:auto;
+  min-width:64px;
+  padding:7px 11px;
+  border:1px solid #b8afa2;
+  background:#eee8de;
+  color:#4e4942;
+  font-size:12px;
+  font-weight:800;
+  box-shadow:none
+}
+.audio-button{
+  width:auto;
+  min-width:0;
+  display:inline-block;
+  margin:6px 0 0 auto;
+  padding:5px 9px;
+  border:1px solid #b8afa2;
+  border-radius:999px;
+  background:transparent;
+  color:#6f675e;
+  font-size:11px;
+  font-weight:700;
+  opacity:.78
+}
+.audio-button.show{display:inline-block}
+.audio-button:not(.show){display:none}
+
+.roller-hint{
+  z-index:5;
+  color:#574d40;
+  font-size:16px;
+  line-height:1.1;
+  background:#f8f2e48f;
+  opacity:1;
+  transition:opacity .24s ease
+}
+.roller-hint.hidden{
+  opacity:0;
+  visibility:hidden
+}
+.hint-arrow{
+  display:inline-block;
+  font-size:27px;
+  line-height:.8
+}
+
+.rules-modal{
+  position:fixed;
+  inset:0;
+  z-index:1000;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:14px;
+  background:#1a1815a8;
+  backdrop-filter:blur(3px)
+}
+.rules-modal.show{display:flex}
+.rules-panel{
+  width:min(92vw,620px);
+  max-height:84vh;
+  overflow:auto;
+  background:#f9f5ed;
+  border-radius:18px;
+  padding:14px;
+  box-shadow:0 22px 60px #0007
+}
+.rules-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  position:sticky;
+  top:-14px;
+  z-index:2;
+  margin:-14px -14px 8px;
+  padding:12px 14px 9px;
+  background:#f9f5ed;
+  border-bottom:1px solid #ded4c5
+}
+.rules-head h2{margin:0}
+.rules-close{
+  width:34px;
+  height:34px;
+  padding:0;
+  border-radius:50%;
+  background:#ded6ca;
+  color:#3e3933;
+  font-size:22px
+}
+.rules-panel details{
+  border-bottom:1px solid #ddd3c5;
+  padding:7px 0
+}
+.rules-panel summary{
+  cursor:pointer;
+  font-weight:900;
+  font-size:16px
+}
+.rules-panel p{
+  margin:7px 0;
+  color:#4f4942;
+  font-size:13px;
+  line-height:1.65
+}
+body.rules-open{overflow:hidden}

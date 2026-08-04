@@ -3,14 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>まわり将棋 v1.0.18</title>
+  <title>まわり将棋 v1.0.19</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main class="app">
-  <header>
-    <h1>まわり将棋</h1>
-    <p class="sub">v1.0.18 — おんぶ第1段階テスト版</p>
+  <header class="app-header">
+    <div>
+      <h1>まわり将棋</h1>
+      <p class="sub">v1.0.19 — おんぶ個人戦・ルール・環境音版</p>
+    </div>
+    <button id="rulesButton" class="rules-button" type="button">ルール</button>
   </header>
 
   <section id="setup" class="card">
@@ -48,7 +51,7 @@
 
     <div id="turnBox" class="turn-box">開始前</div>
     <div id="roller" class="roller" aria-label="金駒を振る場所">
-      <div id="rollerHint" class="roller-hint">金をくるくる回して<br>指を離す</div>
+      <div id="rollerHint" class="roller-hint"><span class="hint-arrow">↺</span><br>くるくる回してね</div>
     </div>
     <div id="battleGauge" class="battle-gauge" aria-hidden="true">
       <div class="battle-gauge-zone"></div>
@@ -62,7 +65,49 @@
 
   <section class="card"><div id="players" class="players"></div></section>
   <section class="card"><div id="log" class="log"></div></section>
+
+  <div id="rulesModal" class="rules-modal" aria-hidden="true">
+    <div class="rules-panel" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+      <div class="rules-head">
+        <h2 id="rulesTitle">遊び方</h2>
+        <button id="rulesClose" class="rules-close" type="button" aria-label="閉じる">×</button>
+      </div>
+
+      <details open>
+        <summary>基本</summary>
+        <p>4人で盤の外周を時計回りに進みます。遊ぶ人が少ない席はCPUが担当します。金4枚の合計点だけ進み、最初に王将へ出世した人が1位です。</p>
+        <p><b>金：</b>表1点／裏0点／横立ち5点／縦立ち10点</p>
+      </details>
+
+      <details>
+        <summary>出世</summary>
+        <p>角にぴったり止まると1段階出世します。0で角に止まっている場合も出世します。</p>
+        <p>歩 → と → 香 → 成香 → 桂 → 成桂 → 銀 → 成銀 → 角 → 馬 → 飛 → 龍 → 王</p>
+      </details>
+
+      <details>
+        <summary>戦争</summary>
+        <p>盤の向かい側で駒同士が正面から向き合うと戦争です。おんぶ中でも全員が別々に金を振り、個人順位を決めます。戦争後はおんぶを解消します。</p>
+        <p><b>2人：</b>出世(+1)／降格(-1)</p>
+        <p><b>3人：</b>大出世(+2)／現状維持(0)／大降格(-2)</p>
+        <p><b>4人：</b>大出世(+2)／出世(+1)／降格(-1)／大降格(-2)</p>
+      </details>
+
+      <details>
+        <summary>勝負振り</summary>
+        <p>戦争中だけ高速ゲージが表示されます。指を離した瞬間、金の印が中央線に近いほど5点・10点が出やすくなります。</p>
+      </details>
+
+      <details>
+        <summary>おんぶ</summary>
+        <p>同じマスへ追いつくと自動で上に乗ります。3段・4段も可能です。下の駒が進むと上の駒も一緒に進みます。</p>
+        <p>上の駒の番で1以上なら降りて移動します。0なら乗ったままで、次に下の駒が動くとまた一緒に進みます。角で出世してもおんぶは続きます。</p>
+        <p>おんぶ中に複数人が同時に王になった場合は同点1位です。</p>
+      </details>
+    </div>
+  </div>
+
 </main>
-<script src="game.js?v=118"></script>
+<script src="game.js?v=119"></script>
 </body>
 </html>

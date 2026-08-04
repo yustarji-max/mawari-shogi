@@ -21,6 +21,15 @@ const resultEl=document.querySelector('#result');
 const battleGauge=document.querySelector('#battleGauge');
 const battleGaugeMarker=document.querySelector('#battleGaugeMarker');
 const logEl=document.querySelector('#log');
+const rulesButton=document.querySelector('#rulesButton');
+const rulesModal=document.querySelector('#rulesModal');
+const rulesClose=document.querySelector('#rulesClose');
+
+const environmentAudio=new Audio('audio/kankyouon.m4a');
+environmentAudio.loop=true;
+environmentAudio.preload='auto';
+environmentAudio.playsInline=true;
+environmentAudio.volume=.52;
 
 let players=[];
 let turnIndex=0;
@@ -78,7 +87,16 @@ async function ensureAudio(){
     if(!audioContext)audioContext=new (window.AudioContext||window.webkitAudioContext)();
     if(audioContext.state!=='running')await audioContext.resume();
     audioEnabled=audioContext.state==='running';
-    audioButton.classList.toggle('show',!audioEnabled);
+
+    if(audioEnabled){
+      environmentAudio.volume=war?.active?.18:.52;
+      if(environmentAudio.paused){
+        await environmentAudio.play();
+      }
+      audioButton.classList.remove('show');
+    }else{
+      audioButton.classList.add('show');
+    }
     return audioEnabled;
   }catch(_){
     audioEnabled=false;
@@ -137,9 +155,23 @@ function whoosh(){
   setTimeout(()=>tone(220,.10,.108,'sine'),45);
 }
 
-// 背景音・戦争BGM・戦争開始音は使わない
-async function enterWarSound(){}
-async function leaveWarSound(){}
+async function fadeEnvironment(target,ms=320){
+  const start=environmentAudio.volume;
+  const steps=10;
+  for(let i=1;i<=steps;i++){
+    environmentAudio.volume=start+(target-start)*(i/steps);
+    await sleep(ms/steps);
+  }
+}
+async function enterWarSound(){
+  if(audioEnabled&&!environmentAudio.paused)await fadeEnvironment(.18,260);
+}
+async function leaveWarSound(){
+  if(audioEnabled){
+    if(environmentAudio.paused)environmentAudio.play().catch(()=>audioButton.classList.add('show'));
+    await fadeEnvironment(.52,420);
+  }
+}
 
 function startBattleGauge(){
   cancelAnimationFrame(gesture.gaugeRaf);
@@ -210,6 +242,11 @@ function attachStack(movingBottom,targetBottom){
   const targetTop=topOfStack(targetBottom);
   players[movingBottom].carrier=targetTop;
   moveStackTo(movingBottom,players[targetBottom].pos);
+}
+function activePlayersAt(pos){
+  return players.map((p,i)=>({p,i}))
+    .filter(x=>!x.p.done&&x.p.pos===pos)
+    .map(x=>x.i);
 }
 function independentBottomsAt(pos,excludeBottom=null){
   return players.map((p,i)=>({p,i})).filter(x=>!x.p.done&&x.p.pos===pos&&stackBottom(x.i)===x.i&&x.i!==excludeBottom).map(x=>x.i);
@@ -298,16 +335,14 @@ function updateUI(){
     roller.style.opacity=p.cpu?'.55':'1';
     const showBattleGauge=Boolean(war&&!p.cpu);
     battleGauge.classList.toggle('show',showBattleGauge);
-    rollerHint.innerHTML=war
-      ? '勝負振り<br><small>金を回しながら中央線を狙う</small>'
-      : '金をくるくる回して<br>指を離す';
+    // 操作案内は初回だけ金の上へ表示。戦争の狙い方はルール画面で確認できる。
   }
   else{
     turnBox.textContent='開始前';
     turnBox.style.borderColor='transparent';
     rollButton.disabled=true;
     battleGauge.classList.remove('show');
-    rollerHint.innerHTML='金をくるくる回して<br>指を離す';
+    // 初回案内の表示状態はlocalStorageで管理。
   }
   renderPlayers();renderLadder();
 }
@@ -391,18 +426,23 @@ function promote(playerIndex,delta){const p=players[playerIndex];p.rank=clamp(p.
 async function showRankChange(playerIndex,delta,label){const p=players[playerIndex],before=RANKS[p.rank];promote(playerIndex,delta);const after=RANKS[p.rank];await showEvent(label,`<div style="font-size:20px;font-weight:900;color:${p.color}">${p.name}<br>${before} → ${after}</div>`,760);log(`${p.name}：${before} → ${after}`);render();}
 
 function oppositeGroupFor(playerIndex){
-  const representative=stackBottom(playerIndex);
-  const p=players[representative],coord=COORDS[p.pos];
+  const p=players[playerIndex],coord=COORDS[p.pos];
   if(isCorner(p.pos))return [];
-  return players.map((q,i)=>({q,i,coord:COORDS[q.pos]})).filter(x=>!x.q.done&&stackBottom(x.i)===x.i&&x.i!==representative&&((coord[0]===0&&x.coord[0]===8&&coord[1]===x.coord[1])||(coord[0]===8&&x.coord[0]===0&&coord[1]===x.coord[1])||(coord[1]===0&&x.coord[1]===8&&coord[0]===x.coord[0])||(coord[1]===8&&x.coord[1]===0&&coord[0]===x.coord[0]))).map(x=>x.i);
+  return players.map((q,i)=>({q,i,coord:COORDS[q.pos]}))
+    .filter(x=>!x.q.done&&x.i!==playerIndex&&(
+      (coord[0]===0&&x.coord[0]===8&&coord[1]===x.coord[1])||
+      (coord[0]===8&&x.coord[0]===0&&coord[1]===x.coord[1])||
+      (coord[1]===0&&x.coord[1]===8&&coord[0]===x.coord[0])||
+      (coord[1]===8&&x.coord[1]===0&&coord[0]===x.coord[0])
+    ))
+    .map(x=>x.i);
 }
 function warParticipantsFor(playerIndex){
-  const representative=stackBottom(playerIndex);
-  const enemies=oppositeGroupFor(representative);if(!enemies.length)return [];
-  const homePos=players[representative].pos,enemyPos=players[enemies[0]].pos;
-  const home=independentBottomsAt(homePos);
-  const away=independentBottomsAt(enemyPos);
-  return [...home,...away];
+  const enemies=oppositeGroupFor(playerIndex);
+  if(!enemies.length)return [];
+  const homePos=players[playerIndex].pos;
+  const enemyPos=players[enemies[0]].pos;
+  return [...activePlayersAt(homePos),...activePlayersAt(enemyPos)];
 }
 function makePath(fromPos,toPos){const [r1,c1]=COORDS[fromPos],[r2,c2]=COORDS[toPos],path=[];for(let i=0;i<=8;i++){const t=i/8;path.push([r1+(r2-r1)*t,c1+(c2-c1)*t]);}for(let i=1;i<=8;i++){const t=i/8;path.push([r2+(r1-r2)*t,c2+(c1-c2)*t]);}return path;}
 function pctFromRC(r,c,off=[0,0]){return{left:`${(c+.5)*100/9+off[0]}%`,top:`${(r+.5)*100/9+off[1]}%`};}
@@ -415,7 +455,7 @@ function renderWarOnBoard(){
   board.insertBefore(line,warShade);
   const positionGroups=new Map();
   war.participants.forEach(index=>{const side=war.side.get(index),progress=war.progress.get(index),path=side===0?war.pathA:war.pathB;const key=`${path[progress][0].toFixed(2)},${path[progress][1].toFixed(2)}`;const list=positionGroups.get(key)||[];list.push(index);positionGroups.set(key,list);});
-  positionGroups.forEach(indices=>indices.forEach((index,j)=>{const side=war.side.get(index),progress=war.progress.get(index),path=side===0?war.pathA:war.pathB,[r,c]=path[progress],off=offsetFor(j,indices.length),ps=pctFromRC(r,c,off),piece=document.createElement('div');piece.className='piece';piece.style.left=ps.left;piece.style.top=ps.top;piece.style.setProperty('--rot',`${warDirection(path,progress)}deg`);piece.style.filter=`drop-shadow(0 0 9px ${players[index].color}) drop-shadow(0 3px 2px #0003)`;piece.innerHTML=pieceHTML(players[index]);board.insertBefore(piece,warShade);const label=document.createElement('div');label.className='war-label';label.style.left=ps.left;label.style.top=`calc(${ps.top} + 6%)`;label.style.color=players[index].color;label.textContent=stackMembers(index).length>1?`${players[index].name}＋${stackMembers(index).length-1}`:players[index].name;board.insertBefore(label,warShade);}));
+  positionGroups.forEach(indices=>indices.forEach((index,j)=>{const side=war.side.get(index),progress=war.progress.get(index),path=side===0?war.pathA:war.pathB,[r,c]=path[progress],off=offsetFor(j,indices.length),ps=pctFromRC(r,c,off),piece=document.createElement('div');piece.className='piece';piece.style.left=ps.left;piece.style.top=ps.top;piece.style.setProperty('--rot',`${warDirection(path,progress)}deg`);piece.style.filter=`drop-shadow(0 0 9px ${players[index].color}) drop-shadow(0 3px 2px #0003)`;piece.innerHTML=pieceHTML(players[index]);board.insertBefore(piece,warShade);const label=document.createElement('div');label.className='war-label';label.style.left=ps.left;label.style.top=`calc(${ps.top} + 6%)`;label.style.color=players[index].color;label.textContent=players[index].name;board.insertBefore(label,warShade);}));
 }
 function warDirection(path,progress){const current=path[progress],next=path[Math.min(16,progress+1)],dr=next[0]-current[0],dc=next[1]-current[1];return Math.abs(dc)>Math.abs(dr)?(dc>0?90:270):(dr>0?180:0);}
 function buildWarOrder(participants){return [...participants].sort((a,b)=>players[a].rank-players[b].rank||players[a].seat-players[b].seat);}
@@ -423,7 +463,18 @@ async function startWar(participants){
   const first=participants[0],enemy=oppositeGroupFor(first)[0];
   const homePos=players[first].pos,enemyPos=players[enemy].pos;
   const side=new Map();participants.forEach(i=>side.set(i,players[i].pos===homePos?0:1));
-  war={participants,side,progress:new Map(participants.map(i=>[i,0])),finish:[],order:buildWarOrder(participants),turnCursor:0,pathA:makePath(homePos,enemyPos),pathB:makePath(enemyPos,homePos)};
+  war={
+    active:true,
+    participants,
+    involvedBottoms:[...new Set(participants.map(i=>stackBottom(i)))],
+    side,
+    progress:new Map(participants.map(i=>[i,0])),
+    finish:[],
+    order:buildWarOrder(participants),
+    turnCursor:0,
+    pathA:makePath(homePos,enemyPos),
+    pathB:makePath(enemyPos,homePos)
+  };
   render();await enterWarSound();await showEvent(participants.length===4?'乱戦！':'戦争',`<b>${participants.map(i=>players[i].name).join('・')}</b>`,800);busy=false;updateUI();if(players[currentWarPlayerIndex()].cpu)setTimeout(autoRoll,650);
 }
 async function moveWarPlayer(playerIndex,steps){
@@ -444,14 +495,20 @@ async function resolveWarRoll(value){
     const finish=[...war.finish],delta=WAR_DELTA[finish.length];
     await showEvent('勝負あり',finish.map((rep,n)=>`${players[rep].name}　${resultLabel(delta[n])}`).join('<br>'),1050);
     for(let n=0;n<finish.length;n++){
-      const rep=finish[n],members=stackMembers(rep),d=delta[n];
-      for(const member of members){
-        if(d!==0)await showRankChange(member,d,resultLabel(d));
-        else await showEvent('現状維持',`<b style="color:${players[member].color}">${players[member].name}</b>`,420);
-      }
+      const playerIndex=finish[n],d=delta[n];
+      if(d!==0)await showRankChange(playerIndex,d,resultLabel(d));
+      else await showEvent('現状維持',`<b style="color:${players[playerIndex].color}">${players[playerIndex].name}</b>`,420);
     }
-    dissolveWarStacks(finish);
-    war=null;warShade.classList.remove('show');await leaveWarSound();busy=false;render();nextTurn();return;
+    const bottoms=[...war.involvedBottoms];
+    bottoms.forEach(bottom=>dissolveStack(bottom));
+    war.active=false;
+    war=null;
+    warShade.classList.remove('show');
+    await leaveWarSound();
+    busy=false;
+    render();
+    nextTurn();
+    return;
   }
   do{war.turnCursor=(war.turnCursor+1)%war.order.length;}while(war.finish.includes(war.order[war.turnCursor]));busy=false;render();if(players[currentWarPlayerIndex()].cpu)setTimeout(autoRoll,650);
 }
@@ -533,6 +590,17 @@ function nextTurn(){
 }
 
 
+
+const ROLL_HINT_KEY='mawariShogiRollHintSeen';
+function updateRollHint(){
+  const seen=localStorage.getItem(ROLL_HINT_KEY)==='1';
+  rollerHint.classList.toggle('hidden',seen);
+}
+function dismissRollHint(){
+  localStorage.setItem(ROLL_HINT_KEY,'1');
+  rollerHint.classList.add('hidden');
+}
+
 function lockPageForRoll(){
   document.body.classList.add('rolling-lock');
 }
@@ -543,6 +611,7 @@ function unlockPageAfterRoll(){
 roller.addEventListener('pointerdown',async event=>{
   if(!running||busy)return;
   lockPageForRoll();
+  dismissRollHint();
   const index=war?currentWarPlayerIndex():turnIndex;
   if(players[index].cpu)return;
   await ensureAudio();
@@ -594,8 +663,13 @@ audioButton.addEventListener('click',async()=>{
   }
 });
 document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible'&&audioContext&&audioContext.state!=='running'){
-    audioButton.classList.add('show');
+  if(document.visibilityState==='visible'){
+    if(audioContext&&audioContext.state!=='running')audioButton.classList.add('show');
+    if(audioEnabled&&environmentAudio.paused){
+      environmentAudio.play().catch(()=>audioButton.classList.add('show'));
+    }
+  }else{
+    environmentAudio.pause();
   }
 });
 document.addEventListener('pointerdown',()=>{if(audioContext&&audioContext.state!=='running')ensureAudio();},{capture:true,passive:true});
@@ -622,11 +696,31 @@ function prepareNames(){
 }
 async function orderPlayers(){let candidates=[0,1,2,3];while(true){const scored=candidates.map(i=>[i,totalGold(goldRoll())]);scored.forEach(([i,s])=>log(`順番決め：${players[i].name} = ${s}`));const max=Math.max(...scored.map(x=>x[1])),top=scored.filter(x=>x[1]===max).map(x=>x[0]);if(top.length===1){const firstSeat=players[top[0]].seat;players.sort((a,b)=>((a.seat-firstSeat+4)%4)-((b.seat-firstSeat+4)%4));turnIndex=0;await showEvent('先攻',`<b style="color:${players[0].color}">${players[0].name}</b><br>ここから右回り`,800);return;}candidates=top;log('1位同点。振り直し');}}
 
+
+function openRules(){
+  rulesModal.classList.add('show');
+  rulesModal.setAttribute('aria-hidden','false');
+  document.body.classList.add('rules-open');
+}
+function closeRules(){
+  rulesModal.classList.remove('show');
+  rulesModal.setAttribute('aria-hidden','true');
+  document.body.classList.remove('rules-open');
+}
+rulesButton.addEventListener('click',openRules);
+rulesClose.addEventListener('click',closeRules);
+rulesModal.addEventListener('click',event=>{
+  if(event.target===rulesModal)closeRules();
+});
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape')closeRules();
+});
+
 document.querySelector('#randomNames').addEventListener('click',randomNames);
 document.querySelector('#startButton').addEventListener('click',async()=>{await ensureAudio();const humans=Number(document.querySelector('#humanCount').value);players=[0,1,2,3].map(i=>({name:document.querySelector(`#name${i}`).value||NAME_POOL[i],seat:i,pos:CORNERS[i],rank:0,color:COLORS[i],sleeve:SLEEVES[i],cpu:i>=humans,isYou:i===0,done:false,place:null,pendingKing:false,carrier:null}));logEl.innerHTML='';resultEl.textContent='';war=null;running=false;busy=true;warShade.classList.remove('show');setupGolds();render();await orderPlayers();running=true;busy=false;render();if(!players[0].cpu&&navigator.vibrate)navigator.vibrate(80);if(players[0].cpu)setTimeout(autoRoll,650);});
 window.addEventListener('resize',setupGolds);
 
-makeBoard();prepareNames();setupGolds();renderLadder();updateUI();
+makeBoard();prepareNames();setupGolds();renderLadder();updateUI();updateRollHint();
 
 window.addEventListener('error',e=>{resultEl.textContent='エラー：'+e.message;log('エラー：'+e.message);busy=false;try{render()}catch(_){}});
 window.addEventListener('unhandledrejection',e=>{const msg=e.reason?.message||String(e.reason);resultEl.textContent='エラー：'+msg;log('エラー：'+msg);busy=false;try{render()}catch(_){}});

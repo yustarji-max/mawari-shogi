@@ -29,7 +29,7 @@ const environmentAudio=new Audio('audio/kankyouon.m4a');
 environmentAudio.loop=true;
 environmentAudio.preload='auto';
 environmentAudio.playsInline=true;
-environmentAudio.volume=.52;
+environmentAudio.volume=.80;
 
 let players=[];
 let turnIndex=0;
@@ -81,17 +81,42 @@ function offsetFor(index,count){
 
 
 let audioEnabled=false;
+let effectsMaster=null;
+let effectsCompressor=null;
+
+function prepareEffectsOutput(){
+  if(!audioContext)return;
+  if(effectsMaster&&effectsCompressor)return;
+
+  effectsMaster=audioContext.createGain();
+  effectsMaster.gain.value=1.35;
+
+  effectsCompressor=audioContext.createDynamicsCompressor();
+  effectsCompressor.threshold.value=-22;
+  effectsCompressor.knee.value=18;
+  effectsCompressor.ratio.value=5;
+  effectsCompressor.attack.value=.003;
+  effectsCompressor.release.value=.16;
+
+  effectsMaster.connect(effectsCompressor);
+  effectsCompressor.connect(audioContext.destination);
+}
 
 async function ensureAudio(){
   try{
     if(!audioContext)audioContext=new (window.AudioContext||window.webkitAudioContext)();
     if(audioContext.state!=='running')await audioContext.resume();
+
+    prepareEffectsOutput();
     audioEnabled=audioContext.state==='running';
 
     if(audioEnabled){
-      environmentAudio.volume=war?.active?.18:.52;
+      // 環境音の再生失敗で効果音まで止めない。
+      environmentAudio.volume=war?.active?.28:.80;
       if(environmentAudio.paused){
-        await environmentAudio.play();
+        environmentAudio.play().catch(()=>{
+          // 環境音だけ失敗しても、木駒の効果音は継続。
+        });
       }
       audioButton.classList.remove('show');
     }else{
@@ -114,8 +139,9 @@ function tone(freq,duration=.04,volume=.025,type='triangle',delay=0){
   osc.frequency.setValueAtTime(freq,start);
   gain.gain.setValueAtTime(Math.max(volume,.0001),start);
   gain.gain.exponentialRampToValueAtTime(.0001,start+duration);
+  prepareEffectsOutput();
   osc.connect(gain);
-  gain.connect(audioContext.destination);
+  gain.connect(effectsMaster||audioContext.destination);
   osc.start(start);
   osc.stop(start+duration+.01);
 }
@@ -164,12 +190,12 @@ async function fadeEnvironment(target,ms=320){
   }
 }
 async function enterWarSound(){
-  if(audioEnabled&&!environmentAudio.paused)await fadeEnvironment(.18,260);
+  if(audioEnabled&&!environmentAudio.paused)await fadeEnvironment(.28,260);
 }
 async function leaveWarSound(){
   if(audioEnabled){
     if(environmentAudio.paused)environmentAudio.play().catch(()=>audioButton.classList.add('show'));
-    await fadeEnvironment(.52,420);
+    await fadeEnvironment(.80,420);
   }
 }
 
@@ -420,7 +446,7 @@ function goldRoll(tier=0){
 function totalGold(golds){return golds.reduce((sum,g)=>sum+g.value,0);}
 function setupGolds(){roller.querySelectorAll('.gold').forEach(el=>el.remove());const cx=roller.clientWidth/2,cy=roller.clientHeight/2;for(let i=0;i<4;i++){const el=document.createElement('div');el.className='gold';el.textContent='金';const a=i*Math.PI/2;el.style.left=`${cx+Math.cos(a)*42}px`;el.style.top=`${cy+Math.sin(a)*34}px`;roller.appendChild(el);}}
 function spinGolds(angle){const list=[...roller.querySelectorAll('.gold')],cx=roller.clientWidth/2,cy=roller.clientHeight/2;list.forEach((el,i)=>{const a=angle+i*Math.PI/2;el.style.left=`${cx+Math.cos(a)*45}px`;el.style.top=`${cy+Math.sin(a)*35}px`;el.style.setProperty('--grot',`${angle*180/Math.PI+i*30}deg`);});}
-async function settleGolds(golds){await sleep(140);whoosh();const els=[...roller.querySelectorAll('.gold')];els.forEach((el,i)=>{const g=golds[i];el.className=`gold ${g.type==='side'?'side':g.type==='vertical'?'vertical':''}`;el.textContent=g.type==='back'?'':g.type==='face'?'金':g.label;el.style.left=`${22+i*19}%`;el.style.top='54%';el.style.setProperty('--grot',`${Math.random()*30-15}deg`);});await sleep(620);}
+async function settleGolds(golds){await sleep(140);whoosh();const els=[...roller.querySelectorAll('.gold')];els.forEach((el,i)=>{const g=golds[i];el.className=`gold ${g.type==='side'?'side':g.type==='vertical'?'vertical':''}`;el.textContent=g.type==='back'?'':g.type==='face'?'金':g.label;el.style.left=`${22+i*19}%`;el.style.top='54%';el.style.setProperty('--grot',`${Math.random()*30-15}deg`);});await sleep(560);thud();await sleep(60);}
 
 function promote(playerIndex,delta){const p=players[playerIndex];p.rank=clamp(p.rank+delta,0,12);p.pendingKing=p.rank===12;}
 async function showRankChange(playerIndex,delta,label){const p=players[playerIndex],before=RANKS[p.rank];promote(playerIndex,delta);const after=RANKS[p.rank];await showEvent(label,`<div style="font-size:20px;font-weight:900;color:${p.color}">${p.name}<br>${before} → ${after}</div>`,760);log(`${p.name}：${before} → ${after}`);render();}
@@ -622,6 +648,7 @@ roller.addEventListener('pointerdown',async event=>{
   gesture.last=Math.atan2(event.clientY-gesture.cy,event.clientX-gesture.cx);
   gesture.total=0;
   gesture.lastSoundAt=0;
+  woodRollTick(.55);
   roller.setPointerCapture(event.pointerId);
   rollerHint.style.opacity='.25';
   if(war)startBattleGauge();

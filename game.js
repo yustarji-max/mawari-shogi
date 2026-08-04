@@ -6,7 +6,7 @@ const SLEEVES=['#8f3b32','#244f78','#56743e','#704875'];
 const NAME_POOL=['たかし','みき','けんじ','ゆうこ','まさる','あきら','なおこ','みどり','しょうた','あや'];
 const RANKS=['歩','と','香','成香','桂','成桂','銀','成銀','角','馬','飛','龍','王'];
 const CORNERS=[0,8,16,24];
-const WAR_DELTA={2:[1,-1],3:[2,0,-2],4:[3,1,-1,-3]};
+const WAR_DELTA={2:[1,-1],3:[2,0,-2],4:[2,1,-1,-2]};
 
 const board=document.querySelector('#board');
 const hand=document.querySelector('#hand');
@@ -172,6 +172,76 @@ function battleGaugeTier(pos){
   return 0;
 }
 
+
+function stackBottom(index){
+  let current=index;
+  const seen=new Set();
+  while(players[current]&&players[current].carrier!==null&&players[current].carrier!==undefined&&!seen.has(current)){
+    seen.add(current);
+    current=players[current].carrier;
+  }
+  return current;
+}
+function directRider(index){
+  return players.findIndex((p,i)=>!p.done&&p.carrier===index);
+}
+function stackMembers(bottomIndex){
+  const members=[];
+  let current=bottomIndex;
+  const seen=new Set();
+  while(current>=0&&players[current]&&!seen.has(current)){
+    seen.add(current);members.push(current);
+    current=directRider(current);
+  }
+  return members;
+}
+function topOfStack(bottomIndex){
+  const members=stackMembers(bottomIndex);
+  return members[members.length-1];
+}
+function detachFromCarrier(index){
+  if(players[index])players[index].carrier=null;
+}
+function moveStackTo(bottomIndex,pos){
+  stackMembers(bottomIndex).forEach(i=>players[i].pos=pos);
+}
+function attachStack(movingBottom,targetBottom){
+  if(movingBottom===targetBottom)return;
+  const targetTop=topOfStack(targetBottom);
+  players[movingBottom].carrier=targetTop;
+  moveStackTo(movingBottom,players[targetBottom].pos);
+}
+function independentBottomsAt(pos,excludeBottom=null){
+  return players.map((p,i)=>({p,i})).filter(x=>!x.p.done&&x.p.pos===pos&&stackBottom(x.i)===x.i&&x.i!==excludeBottom).map(x=>x.i);
+}
+function maybeOnbuAfterMove(movingBottom){
+  const pos=players[movingBottom].pos;
+  const targets=independentBottomsAt(pos,movingBottom);
+  if(!targets.length)return false;
+  // 先にそのマスにいた山の一番上へ、移動してきた山ごと乗る。
+  const target=targets[0];
+  attachStack(movingBottom,target);
+  log(`${players[movingBottom].name}たちは${players[target].name}におんぶ`);
+  return true;
+}
+function dissolveStack(bottomIndex){
+  const members=stackMembers(bottomIndex);
+  members.slice(1).forEach(i=>players[i].carrier=null);
+}
+function dissolveWarStacks(representatives){
+  representatives.forEach(rep=>dissolveStack(rep));
+}
+function resultLabel(delta){
+  if(delta>=2)return '大出世！';
+  if(delta===1)return '出世！';
+  if(delta===0)return '現状維持';
+  if(delta===-1)return '降格…';
+  return '大降格…';
+}
+function finishGame(winners){
+  winners.forEach(i=>{players[i].done=true;players[i].place=1;players[i].pendingKing=false;});
+  running=false;busy=false;war=null;warShade.classList.remove('show');
+}
 function physicalDisplay(player){
   const same=players.filter(p=>!p.done&&p.rank===player.rank);
   const order=same.indexOf(player);
@@ -185,19 +255,27 @@ function pieceHTML(player){const [base,helper]=physicalDisplay(player);return he
 function renderPieces(){
   board.querySelectorAll('.piece,.cushion,.war-line,.war-label').forEach(el=>el.remove());
   if(war){renderWarOnBoard();return;}
+  const bottoms=players.map((p,i)=>!p.done&&stackBottom(i)===i?i:-1).filter(i=>i>=0);
   const groups=new Map();
-  players.forEach((p,i)=>{if(!p.done){const key=p.pos;const list=groups.get(key)||[];list.push(i);groups.set(key,list);}});
-  groups.forEach(indices=>{
-    indices.forEach((playerIndex,j)=>{
-      const p=players[playerIndex],off=offsetFor(j,indices.length),ps=posStyle(p.pos,off);
-      const cushion=document.createElement('div');cushion.className='cushion';cushion.style.left=ps.left;cushion.style.top=ps.top;cushion.style.background=p.color;board.insertBefore(cushion,warShade);
-      const piece=document.createElement('div');piece.className=`piece${running&&playerIndex===turnIndex?' active':''}`;piece.dataset.player=String(playerIndex);piece.style.left=ps.left;piece.style.top=ps.top;piece.style.setProperty('--rot',`${directionFor(p.pos)}deg`);piece.style.setProperty('--glow',p.color);piece.innerHTML=pieceHTML(p);board.insertBefore(piece,warShade);
+  bottoms.forEach(i=>{const key=players[i].pos;const list=groups.get(key)||[];list.push(i);groups.set(key,list);});
+  groups.forEach(bottomIndices=>{
+    bottomIndices.forEach((bottomIndex,groupNo)=>{
+      const members=stackMembers(bottomIndex);
+      const groupOffset=offsetFor(groupNo,bottomIndices.length);
+      members.forEach((playerIndex,level)=>{
+        const p=players[playerIndex];
+        // おんぶは上へ少しずつずらし、3段以上も読めるようにする。
+        const off=[groupOffset[0]+level*.55,groupOffset[1]-level*2.15];
+        const ps=posStyle(p.pos,off);
+        const cushion=document.createElement('div');cushion.className='cushion';cushion.style.left=ps.left;cushion.style.top=ps.top;cushion.style.background=p.color;board.insertBefore(cushion,warShade);
+        const piece=document.createElement('div');piece.className=`piece${running&&playerIndex===turnIndex?' active':''}`;piece.dataset.player=String(playerIndex);piece.style.left=ps.left;piece.style.top=ps.top;piece.style.zIndex=String(20+level);piece.style.setProperty('--rot',`${directionFor(p.pos)}deg`);piece.style.setProperty('--glow',p.color);piece.innerHTML=pieceHTML(p);board.insertBefore(piece,warShade);
+      });
     });
   });
 }
 function renderPlayers(){
   const root=document.querySelector('#players');root.innerHTML='';
-  players.forEach((p,i)=>{const el=document.createElement('div');el.className=`player-box${running&&i===turnIndex&&!p.done?' on':''}`;el.innerHTML=`<b style="color:${p.color}">● ${p.name}</b>${p.isYou?'<span class="you">あなた</span>':''}<br>${RANKS[p.rank]}${p.pendingKing?'（王位未確定）':''}${p.cpu?'・自動':''}${p.done?`<br><b>${p.place}位</b>`:''}`;root.appendChild(el);});
+  players.forEach((p,i)=>{const el=document.createElement('div');el.className=`player-box${running&&i===turnIndex&&!p.done?' on':''}`;el.innerHTML=`<b style="color:${p.color}">● ${p.name}</b>${p.isYou?'<span class="you">あなた</span>':''}<br>${RANKS[p.rank]}${p.pendingKing?'（王位未確定）':''}${p.cpu?'・自動':''}${p.carrier!==null&&p.carrier!==undefined?'<br><span class="onbu-note">おんぶ中</span>':''}${p.done?`<br><b>${p.place}位</b>`:''}`;root.appendChild(el);});
 }
 function renderLadder(){
   const root=document.querySelector('#rankRows');root.innerHTML='';
@@ -264,17 +342,21 @@ async function showHand(pos,playerIndex,visible=true,offset=[0,0]){
 }
 async function moveNormal(playerIndex,steps){
   const p=players[playerIndex];
+  // 上の駒は、1以上を出した時点で下から離れる。上に乗る駒は一緒に付いてくる。
+  if(steps>0&&p.carrier!==null&&p.carrier!==undefined){
+    detachFromCarrier(playerIndex);
+    log(`${p.name}：おんぶを降りる`);
+  }
+  const movingBottom=stackBottom(playerIndex);
   await showHand(p.pos,playerIndex,true);
   for(let i=0;i<steps;i++){
-    p.pos=(p.pos+1)%32;
-    await showHand(p.pos,playerIndex,true);
-    renderPieces();
-    clack();
-    await sleep(190);
+    const next=(players[movingBottom].pos+1)%32;
+    moveStackTo(movingBottom,next);
+    await showHand(next,playerIndex,true);
+    renderPieces();clack();await sleep(190);
   }
-  hand.classList.remove('show');
-  await sleep(90);
-  renderPieces();
+  hand.classList.remove('show');await sleep(90);renderPieces();
+  if(steps>0)maybeOnbuAfterMove(movingBottom);
 }
 
 function goldRoll(tier=0){
@@ -309,15 +391,17 @@ function promote(playerIndex,delta){const p=players[playerIndex];p.rank=clamp(p.
 async function showRankChange(playerIndex,delta,label){const p=players[playerIndex],before=RANKS[p.rank];promote(playerIndex,delta);const after=RANKS[p.rank];await showEvent(label,`<div style="font-size:20px;font-weight:900;color:${p.color}">${p.name}<br>${before} → ${after}</div>`,760);log(`${p.name}：${before} → ${after}`);render();}
 
 function oppositeGroupFor(playerIndex){
-  const p=players[playerIndex],coord=COORDS[p.pos];
+  const representative=stackBottom(playerIndex);
+  const p=players[representative],coord=COORDS[p.pos];
   if(isCorner(p.pos))return [];
-  return players.map((q,i)=>({q,i,coord:COORDS[q.pos]})).filter(x=>!x.q.done&&x.i!==playerIndex&&((coord[0]===0&&x.coord[0]===8&&coord[1]===x.coord[1])||(coord[0]===8&&x.coord[0]===0&&coord[1]===x.coord[1])||(coord[1]===0&&x.coord[1]===8&&coord[0]===x.coord[0])||(coord[1]===8&&x.coord[1]===0&&coord[0]===x.coord[0]))).map(x=>x.i);
+  return players.map((q,i)=>({q,i,coord:COORDS[q.pos]})).filter(x=>!x.q.done&&stackBottom(x.i)===x.i&&x.i!==representative&&((coord[0]===0&&x.coord[0]===8&&coord[1]===x.coord[1])||(coord[0]===8&&x.coord[0]===0&&coord[1]===x.coord[1])||(coord[1]===0&&x.coord[1]===8&&coord[0]===x.coord[0])||(coord[1]===8&&x.coord[1]===0&&coord[0]===x.coord[0]))).map(x=>x.i);
 }
 function warParticipantsFor(playerIndex){
-  const enemies=oppositeGroupFor(playerIndex);if(!enemies.length)return [];
-  const homePos=players[playerIndex].pos,enemyPos=players[enemies[0]].pos;
-  const home=players.map((p,i)=>!p.done&&p.pos===homePos?i:-1).filter(i=>i>=0);
-  const away=players.map((p,i)=>!p.done&&p.pos===enemyPos?i:-1).filter(i=>i>=0);
+  const representative=stackBottom(playerIndex);
+  const enemies=oppositeGroupFor(representative);if(!enemies.length)return [];
+  const homePos=players[representative].pos,enemyPos=players[enemies[0]].pos;
+  const home=independentBottomsAt(homePos);
+  const away=independentBottomsAt(enemyPos);
   return [...home,...away];
 }
 function makePath(fromPos,toPos){const [r1,c1]=COORDS[fromPos],[r2,c2]=COORDS[toPos],path=[];for(let i=0;i<=8;i++){const t=i/8;path.push([r1+(r2-r1)*t,c1+(c2-c1)*t]);}for(let i=1;i<=8;i++){const t=i/8;path.push([r2+(r1-r2)*t,c2+(c1-c2)*t]);}return path;}
@@ -331,7 +415,7 @@ function renderWarOnBoard(){
   board.insertBefore(line,warShade);
   const positionGroups=new Map();
   war.participants.forEach(index=>{const side=war.side.get(index),progress=war.progress.get(index),path=side===0?war.pathA:war.pathB;const key=`${path[progress][0].toFixed(2)},${path[progress][1].toFixed(2)}`;const list=positionGroups.get(key)||[];list.push(index);positionGroups.set(key,list);});
-  positionGroups.forEach(indices=>indices.forEach((index,j)=>{const side=war.side.get(index),progress=war.progress.get(index),path=side===0?war.pathA:war.pathB,[r,c]=path[progress],off=offsetFor(j,indices.length),ps=pctFromRC(r,c,off),piece=document.createElement('div');piece.className='piece';piece.style.left=ps.left;piece.style.top=ps.top;piece.style.setProperty('--rot',`${warDirection(path,progress)}deg`);piece.style.filter=`drop-shadow(0 0 9px ${players[index].color}) drop-shadow(0 3px 2px #0003)`;piece.innerHTML=pieceHTML(players[index]);board.insertBefore(piece,warShade);const label=document.createElement('div');label.className='war-label';label.style.left=ps.left;label.style.top=`calc(${ps.top} + 6%)`;label.style.color=players[index].color;label.textContent=players[index].name;board.insertBefore(label,warShade);}));
+  positionGroups.forEach(indices=>indices.forEach((index,j)=>{const side=war.side.get(index),progress=war.progress.get(index),path=side===0?war.pathA:war.pathB,[r,c]=path[progress],off=offsetFor(j,indices.length),ps=pctFromRC(r,c,off),piece=document.createElement('div');piece.className='piece';piece.style.left=ps.left;piece.style.top=ps.top;piece.style.setProperty('--rot',`${warDirection(path,progress)}deg`);piece.style.filter=`drop-shadow(0 0 9px ${players[index].color}) drop-shadow(0 3px 2px #0003)`;piece.innerHTML=pieceHTML(players[index]);board.insertBefore(piece,warShade);const label=document.createElement('div');label.className='war-label';label.style.left=ps.left;label.style.top=`calc(${ps.top} + 6%)`;label.style.color=players[index].color;label.textContent=stackMembers(index).length>1?`${players[index].name}＋${stackMembers(index).length-1}`:players[index].name;board.insertBefore(label,warShade);}));
 }
 function warDirection(path,progress){const current=path[progress],next=path[Math.min(16,progress+1)],dr=next[0]-current[0],dc=next[1]-current[1];return Math.abs(dc)>Math.abs(dr)?(dc>0?90:270):(dr>0?180:0);}
 function buildWarOrder(participants){return [...participants].sort((a,b)=>players[a].rank-players[b].rank||players[a].seat-players[b].seat);}
@@ -356,39 +440,47 @@ async function resolveWarRoll(value){
   const index=currentWarPlayerIndex();await moveWarPlayer(index,value);
   if(war.progress.get(index)>=16&&!war.finish.includes(index)){war.finish.push(index);log(`戦争：${players[index].name} ${war.finish.length}位`);}
   if(war.finish.length===war.participants.length-1){const last=war.participants.find(i=>!war.finish.includes(i));war.finish.push(last);}
-  if(war.finish.length===war.participants.length){const finish=[...war.finish],delta=WAR_DELTA[finish.length];await showEvent('勝負あり',finish.map((i,n)=>`${n+1}位 ${players[i].name}`).join('<br>'),900);for(let i=0;i<finish.length;i++)if(delta[i]!==0)await showRankChange(finish[i],delta[i],delta[i]>0?'戦争・出世':'戦争・降格');war=null;warShade.classList.remove('show');await leaveWarSound();busy=false;render();nextTurn();return;}
+  if(war.finish.length===war.participants.length){
+    const finish=[...war.finish],delta=WAR_DELTA[finish.length];
+    await showEvent('勝負あり',finish.map((rep,n)=>`${players[rep].name}　${resultLabel(delta[n])}`).join('<br>'),1050);
+    for(let n=0;n<finish.length;n++){
+      const rep=finish[n],members=stackMembers(rep),d=delta[n];
+      for(const member of members){
+        if(d!==0)await showRankChange(member,d,resultLabel(d));
+        else await showEvent('現状維持',`<b style="color:${players[member].color}">${players[member].name}</b>`,420);
+      }
+    }
+    dissolveWarStacks(finish);
+    war=null;warShade.classList.remove('show');await leaveWarSound();busy=false;render();nextTurn();return;
+  }
   do{war.turnCursor=(war.turnCursor+1)%war.order.length;}while(war.finish.includes(war.order[war.turnCursor]));busy=false;render();if(players[currentWarPlayerIndex()].cpu)setTimeout(autoRoll,650);
 }
 
 async function resolveNormalRoll(value){
-  const p=players[turnIndex];await moveNormal(turnIndex,value);
-  if(isCorner(p.pos)){
-    // 戦争で王になった未確定王は、通常移動で角に止まると王位確定。
-    if(p.rank===12&&p.pendingKing){
-      p.pendingKing=false;
-      p.done=true;
-      p.place=players.filter(x=>x.done).length+1;
-      await showEvent('王位確定',`<b style="color:${p.color}">${p.name}　${p.place}位で上がり</b>`,900);
-      render();
-      busy=false;
-      nextTurn();
-      return;
+  const active=turnIndex;
+  const beforeBottom=stackBottom(active);
+  await moveNormal(active,value);
+  const movingBottom=stackBottom(active);
+  const movedMembers=stackMembers(movingBottom);
+  const corner=isCorner(players[active].pos);
+  if(corner){
+    // 移動して角へ到達した時は、一緒に運ばれた全員が出世。0なら手番の駒だけ。
+    const targets=value>0?movedMembers:[active];
+    const winners=[];
+    for(const i of targets){
+      const p=players[i];
+      if(p.rank===12&&p.pendingKing){p.pendingKing=false;winners.push(i);continue;}
+      if(p.rank===11){await showRankChange(i,1,'角で王へ');p.pendingKing=false;winners.push(i);continue;}
+      await showRankChange(i,1,'角で出世');
+      if(players[i].rank===12){players[i].pendingKing=false;winners.push(i);}
     }
-    // 龍が通常移動で角に止まった場合は、その場で王になり即上がり。
-    if(p.rank===11){
-      await showRankChange(turnIndex,1,'角で王へ');
-      p.pendingKing=false;
-      p.done=true;
-      p.place=players.filter(x=>x.done).length+1;
-      await showEvent('上がり',`<b style="color:${p.color}">${p.name}　${p.place}位</b>`,900);
-      render();
-      busy=false;
-      nextTurn();
-      return;
+    if(winners.length){
+      finishGame(winners);
+      await showEvent(winners.length>1?'同点1位！':'上がり',winners.map(i=>`<b style="color:${players[i].color}">${players[i].name}　王将</b>`).join('<br>'),1200);
+      render();return;
     }
-    await showRankChange(turnIndex,1,'角で出世');
   }
-  const participants=warParticipantsFor(turnIndex);
+  const participants=warParticipantsFor(active);
   if(participants.length>=2){busy=false;await startWar(participants);return;}
   busy=false;nextTurn();
 }
@@ -433,8 +525,11 @@ async function autoRoll(){
   await performRoll(tier);
 }
 function nextTurn(){
-  if(players.filter(p=>!p.done).length<=1){const last=players.find(p=>!p.done);if(last){last.done=true;last.place=4;}running=false;render();log('全員の順位が決まりました。');return;}
-  do{turnIndex=(turnIndex+1)%players.length;}while(players[turnIndex].done);render();if(!players[turnIndex].cpu&&navigator.vibrate)navigator.vibrate(80);if(players[turnIndex].cpu)setTimeout(autoRoll,650);
+  if(!running)return;
+  do{turnIndex=(turnIndex+1)%players.length;}while(players[turnIndex].done);
+  render();
+  if(!players[turnIndex].cpu&&navigator.vibrate)navigator.vibrate(80);
+  if(players[turnIndex].cpu)setTimeout(autoRoll,650);
 }
 
 
@@ -528,7 +623,7 @@ function prepareNames(){
 async function orderPlayers(){let candidates=[0,1,2,3];while(true){const scored=candidates.map(i=>[i,totalGold(goldRoll())]);scored.forEach(([i,s])=>log(`順番決め：${players[i].name} = ${s}`));const max=Math.max(...scored.map(x=>x[1])),top=scored.filter(x=>x[1]===max).map(x=>x[0]);if(top.length===1){const firstSeat=players[top[0]].seat;players.sort((a,b)=>((a.seat-firstSeat+4)%4)-((b.seat-firstSeat+4)%4));turnIndex=0;await showEvent('先攻',`<b style="color:${players[0].color}">${players[0].name}</b><br>ここから右回り`,800);return;}candidates=top;log('1位同点。振り直し');}}
 
 document.querySelector('#randomNames').addEventListener('click',randomNames);
-document.querySelector('#startButton').addEventListener('click',async()=>{await ensureAudio();const humans=Number(document.querySelector('#humanCount').value);players=[0,1,2,3].map(i=>({name:document.querySelector(`#name${i}`).value||NAME_POOL[i],seat:i,pos:CORNERS[i],rank:0,color:COLORS[i],sleeve:SLEEVES[i],cpu:i>=humans,isYou:i===0,done:false,place:null,pendingKing:false}));logEl.innerHTML='';resultEl.textContent='';war=null;running=false;busy=true;warShade.classList.remove('show');setupGolds();render();await orderPlayers();running=true;busy=false;render();if(!players[0].cpu&&navigator.vibrate)navigator.vibrate(80);if(players[0].cpu)setTimeout(autoRoll,650);});
+document.querySelector('#startButton').addEventListener('click',async()=>{await ensureAudio();const humans=Number(document.querySelector('#humanCount').value);players=[0,1,2,3].map(i=>({name:document.querySelector(`#name${i}`).value||NAME_POOL[i],seat:i,pos:CORNERS[i],rank:0,color:COLORS[i],sleeve:SLEEVES[i],cpu:i>=humans,isYou:i===0,done:false,place:null,pendingKing:false,carrier:null}));logEl.innerHTML='';resultEl.textContent='';war=null;running=false;busy=true;warShade.classList.remove('show');setupGolds();render();await orderPlayers();running=true;busy=false;render();if(!players[0].cpu&&navigator.vibrate)navigator.vibrate(80);if(players[0].cpu)setTimeout(autoRoll,650);});
 window.addEventListener('resize',setupGolds);
 
 makeBoard();prepareNames();setupGolds();renderLadder();updateUI();

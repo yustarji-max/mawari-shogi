@@ -92,7 +92,7 @@ const effectBuffers={step:[],roll:[],land:[]};
 let effectsGain=null;
 
 // ===== 環境音：AudioContext上で時間指定して途切れなくクロスフェード =====
-const ENV_SRC='audio/kankyouon.m4a';
+const ENV_SRC='audio/kankyouon.wav';
 const ENV_VOLUME=.80;
 const ENV_WAR_VOLUME=.28;
 const ENV_OVERLAP=3.6;
@@ -113,15 +113,30 @@ async function fetchBuffer(url){
 }
 
 async function loadAllAudioBuffers(){
-  const jobs=[];
+  // 効果音と環境音は独立して読む。1ファイル失敗しても全部を止めない。
+  const effectJobs=[];
   for(const key of ['step','roll','land']){
     effectBuffers[key]=[];
     EFFECT_FILES[key].forEach((url,idx)=>{
-      jobs.push(fetchBuffer(url).then(buf=>effectBuffers[key][idx]=buf));
+      effectJobs.push(
+        fetchBuffer(url)
+          .then(buf=>{ effectBuffers[key][idx]=buf; return true; })
+          .catch(error=>{
+            console.warn('effect audio load failed',url,error);
+            return false;
+          })
+      );
     });
   }
-  jobs.push(fetchBuffer(ENV_SRC).then(buf=>envBuffer=buf));
-  await Promise.all(jobs);
+  await Promise.all(effectJobs);
+
+  // 環境音は別処理。失敗しても効果音は有効のまま。
+  try{
+    envBuffer=await fetchBuffer(ENV_SRC);
+  }catch(error){
+    envBuffer=null;
+    console.warn('environment audio load failed',error);
+  }
 }
 
 function playEffect(kind,index=null,volume=1){
@@ -244,18 +259,19 @@ async function ensureAudio(){
 
     if(!effectsGain){
       effectsGain=audioContext.createGain();
-      // 効果音は環境音より明確に前へ。クリップはWAV側で防止。
       effectsGain.gain.value=1.0;
       effectsGain.connect(audioContext.destination);
     }
 
-    if(!envBuffer||!effectBuffers.step.length){
+    if(!effectBuffers.step.length){
       await loadAllAudioBuffers();
     }
 
     audioEnabled=audioContext.state==='running';
+
     if(audioEnabled){
-      await startEnvironmentEngine();
+      // 環境音が読めていれば開始。読めていなくても効果音は鳴る。
+      if(envBuffer)await startEnvironmentEngine();
       audioButton.classList.remove('show');
     }else{
       audioButton.classList.add('show');
@@ -263,9 +279,10 @@ async function ensureAudio(){
     return audioEnabled;
   }catch(error){
     console.error('audio init failed',error);
-    audioEnabled=false;
-    audioButton.classList.add('show');
-    return false;
+    // AudioContext自体が生きていれば、読み込み済み効果音は使える。
+    audioEnabled=Boolean(audioContext&&audioContext.state==='running');
+    audioButton.classList.toggle('show',!audioEnabled);
+    return audioEnabled;
   }
 }
 

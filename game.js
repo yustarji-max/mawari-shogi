@@ -25,11 +25,7 @@ const rulesButton=document.querySelector('#rulesButton');
 const rulesModal=document.querySelector('#rulesModal');
 const rulesClose=document.querySelector('#rulesClose');
 
-const environmentAudio=new Audio('audio/kankyouon_loop.wav');
-environmentAudio.loop=true;
-environmentAudio.preload='auto';
-environmentAudio.playsInline=true;
-environmentAudio.volume=.80;
+
 
 let players=[];
 let turnIndex=0;
@@ -92,45 +88,17 @@ function prepareEffectsOutput(){
   if(effectsMaster&&effectsCompressor)return;
 
   effectsMaster=audioContext.createGain();
-  effectsMaster.gain.value=1.55;
+  effectsMaster.gain.value=1.35;
 
   effectsCompressor=audioContext.createDynamicsCompressor();
-  effectsCompressor.threshold.value=-10;
+  effectsCompressor.threshold.value=-22;
   effectsCompressor.knee.value=18;
-  effectsCompressor.ratio.value=2.2;
+  effectsCompressor.ratio.value=5;
   effectsCompressor.attack.value=.003;
   effectsCompressor.release.value=.16;
 
   effectsMaster.connect(effectsCompressor);
   effectsCompressor.connect(audioContext.destination);
-}
-
-async function ensureAudio(){
-  try{
-    if(!audioContext)audioContext=new (window.AudioContext||window.webkitAudioContext)();
-    if(audioContext.state!=='running')await audioContext.resume();
-
-    prepareEffectsOutput();
-    audioEnabled=audioContext.state==='running';
-
-    if(audioEnabled){
-      // 環境音の再生失敗で効果音まで止めない。
-      environmentAudio.volume=war?.active?.28:.80;
-      if(environmentAudio.paused){
-        environmentAudio.play().catch(()=>{
-          // 環境音だけ失敗しても、木駒の効果音は継続。
-        });
-      }
-      audioButton.classList.remove('show');
-    }else{
-      audioButton.classList.add('show');
-    }
-    return audioEnabled;
-  }catch(_){
-    audioEnabled=false;
-    audioButton.classList.add('show');
-    return false;
-  }
 }
 
 function tone(freq,duration=.04,volume=.025,type='triangle',delay=0){
@@ -152,8 +120,8 @@ function tone(freq,duration=.04,volume=.025,type='triangle',delay=0){
 function woodStep(){
   // 初期版の、丸く短い「コト」
   const base=170+Math.random()*70;
-  tone(base,.055,.340,'triangle');
-  setTimeout(()=>tone(base*.62,.07,.205,'sine'),22);
+  tone(base,.055,.225,'triangle');
+  setTimeout(()=>tone(base*.62,.07,.135,'sine'),22);
 }
 
 function woodRollTick(speed=0.5){
@@ -184,22 +152,146 @@ function whoosh(){
   setTimeout(()=>tone(220,.10,.108,'sine'),45);
 }
 
-async function fadeEnvironment(target,ms=320){
-  const start=environmentAudio.volume;
-  const steps=10;
+
+// ===== 環境音：2本交互のクロスフェード再生 =====
+const ENV_SRC='audio/kankyouon.m4a';
+const ENV_VOLUME=.80;
+const ENV_WAR_VOLUME=.28;
+const ENV_FADE_SEC=2.2;
+
+const envA=new Audio(ENV_SRC);
+const envB=new Audio(ENV_SRC);
+[envA,envB].forEach(a=>{
+  a.preload='auto';
+  a.playsInline=true;
+  a.loop=false;
+  a.volume=0;
+});
+
+let envCurrent=envA;
+let envNext=envB;
+let envTimer=null;
+let envFadeTimer=null;
+let envBaseVolume=ENV_VOLUME;
+let envRunning=false;
+
+function clearEnvironmentTimers(){
+  if(envTimer!==null){clearTimeout(envTimer);envTimer=null;}
+  if(envFadeTimer!==null){clearInterval(envFadeTimer);envFadeTimer=null;}
+}
+
+function setEnvVolumeImmediately(v){
+  envBaseVolume=v;
+  if(envRunning){
+    envCurrent.volume=Math.min(v,1);
+  }
+}
+
+function fadePair(outAudio,inAudio,target,seconds=ENV_FADE_SEC){
+  if(envFadeTimer!==null)clearInterval(envFadeTimer);
+  const steps=30;
+  let step=0;
+  const interval=Math.max(16,(seconds*1000)/steps);
+  const outStart=outAudio.volume;
+  inAudio.volume=0;
+  envFadeTimer=setInterval(()=>{
+    step++;
+    const t=Math.min(1,step/steps);
+    outAudio.volume=Math.max(0,outStart*(1-t));
+    inAudio.volume=Math.min(1,target*t);
+    if(t>=1){
+      clearInterval(envFadeTimer);
+      envFadeTimer=null;
+      outAudio.pause();
+      outAudio.currentTime=0;
+    }
+  },interval);
+}
+
+function scheduleEnvironmentTransition(){
+  clearTimeout(envTimer);
+  const dur=Number.isFinite(envCurrent.duration)?envCurrent.duration:32;
+  const remaining=Math.max(3,dur-envCurrent.currentTime-ENV_FADE_SEC);
+  envTimer=setTimeout(async()=>{
+    if(!envRunning)return;
+    try{
+      envNext.currentTime=0;
+      envNext.volume=0;
+      await envNext.play();
+      fadePair(envCurrent,envNext,envBaseVolume,ENV_FADE_SEC);
+      const old=envCurrent;
+      envCurrent=envNext;
+      envNext=old;
+      setTimeout(scheduleEnvironmentTransition,Math.ceil(ENV_FADE_SEC*1000)+80);
+    }catch(_){
+      // 再生失敗時は少し待って再試行。効果音は止めない。
+      envTimer=setTimeout(scheduleEnvironmentTransition,1000);
+    }
+  },remaining*1000);
+}
+
+async function startEnvironment(){
+  if(envRunning)return;
+  envRunning=true;
+  clearEnvironmentTimers();
+  try{
+    envCurrent.currentTime=0;
+    envCurrent.volume=envBaseVolume;
+    envNext.pause();
+    envNext.currentTime=0;
+    envNext.volume=0;
+    await envCurrent.play();
+    scheduleEnvironmentTransition();
+  }catch(_){
+    envRunning=false;
+  }
+}
+
+function stopEnvironment(){
+  envRunning=false;
+  clearEnvironmentTimers();
+  envA.pause();
+  envB.pause();
+}
+
+async function fadeEnvironmentTo(target,ms=320){
+  envBaseVolume=target;
+  const start=envCurrent.volume;
+  const steps=12;
   for(let i=1;i<=steps;i++){
-    environmentAudio.volume=start+(target-start)*(i/steps);
+    if(!envRunning)break;
+    envCurrent.volume=start+(target-start)*(i/steps);
     await sleep(ms/steps);
   }
 }
+
+async function ensureAudio(){
+  try{
+    if(!audioContext)audioContext=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioContext.state!=='running')await audioContext.resume();
+
+    prepareEffectsOutput();
+    audioEnabled=audioContext.state==='running';
+
+    if(audioEnabled){
+      if(!envRunning)await startEnvironment();
+      audioButton.classList.remove('show');
+    }else{
+      audioButton.classList.add('show');
+    }
+    return audioEnabled;
+  }catch(_){
+    audioEnabled=false;
+    audioButton.classList.add('show');
+    return false;
+  }
+}
+
 async function enterWarSound(){
-  if(audioEnabled&&!environmentAudio.paused)await fadeEnvironment(.28,260);
+  if(audioEnabled)await fadeEnvironmentTo(ENV_WAR_VOLUME,260);
 }
 async function leaveWarSound(){
-  if(audioEnabled){
-    if(environmentAudio.paused)environmentAudio.play().catch(()=>audioButton.classList.add('show'));
-    await fadeEnvironment(.80,420);
-  }
+  if(audioEnabled)await fadeEnvironmentTo(ENV_VOLUME,420);
 }
 
 function startBattleGauge(){
@@ -824,11 +916,9 @@ audioButton.addEventListener('click',async()=>{
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'){
     if(audioContext&&audioContext.state!=='running')audioButton.classList.add('show');
-    if(audioEnabled&&environmentAudio.paused){
-      environmentAudio.play().catch(()=>audioButton.classList.add('show'));
-    }
+    if(audioEnabled&&!envRunning)startEnvironment().catch(()=>{});
   }else{
-    environmentAudio.pause();
+    stopEnvironment();
   }
 });
 document.addEventListener('pointerdown',()=>{if(audioContext&&audioContext.state!=='running')ensureAudio();},{capture:true,passive:true});

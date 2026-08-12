@@ -25,7 +25,7 @@ const rulesButton=document.querySelector('#rulesButton');
 const rulesModal=document.querySelector('#rulesModal');
 const rulesClose=document.querySelector('#rulesClose');
 
-const environmentAudio=new Audio('audio/kankyouon.m4a');
+const environmentAudio=new Audio('audio/kankyouon_loop.wav');
 environmentAudio.loop=true;
 environmentAudio.preload='auto';
 environmentAudio.playsInline=true;
@@ -92,12 +92,12 @@ function prepareEffectsOutput(){
   if(effectsMaster&&effectsCompressor)return;
 
   effectsMaster=audioContext.createGain();
-  effectsMaster.gain.value=1.35;
+  effectsMaster.gain.value=1.55;
 
   effectsCompressor=audioContext.createDynamicsCompressor();
-  effectsCompressor.threshold.value=-22;
+  effectsCompressor.threshold.value=-10;
   effectsCompressor.knee.value=18;
-  effectsCompressor.ratio.value=5;
+  effectsCompressor.ratio.value=2.2;
   effectsCompressor.attack.value=.003;
   effectsCompressor.release.value=.16;
 
@@ -152,8 +152,8 @@ function tone(freq,duration=.04,volume=.025,type='triangle',delay=0){
 function woodStep(){
   // 初期版の、丸く短い「コト」
   const base=170+Math.random()*70;
-  tone(base,.055,.225,'triangle');
-  setTimeout(()=>tone(base*.62,.07,.135,'sine'),22);
+  tone(base,.055,.340,'triangle');
+  setTimeout(()=>tone(base*.62,.07,.205,'sine'),22);
 }
 
 function woodRollTick(speed=0.5){

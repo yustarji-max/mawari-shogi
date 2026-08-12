@@ -88,7 +88,7 @@ function prepareEffectsOutput(){
   if(effectsMaster&&effectsCompressor)return;
 
   effectsMaster=audioContext.createGain();
-  effectsMaster.gain.value=1.35;
+  effectsMaster.gain.value=2.35;
 
   effectsCompressor=audioContext.createDynamicsCompressor();
   effectsCompressor.threshold.value=-22;
@@ -97,8 +97,8 @@ function prepareEffectsOutput(){
   effectsCompressor.attack.value=.003;
   effectsCompressor.release.value=.16;
 
-  effectsMaster.connect(effectsCompressor);
-  effectsCompressor.connect(audioContext.destination);
+  // 効果音は環境音に埋もれないようコンプレッサーを通さず直接出力。
+  effectsMaster.connect(audioContext.destination);
 }
 
 function tone(freq,duration=.04,volume=.025,type='triangle',delay=0){
@@ -120,8 +120,8 @@ function tone(freq,duration=.04,volume=.025,type='triangle',delay=0){
 function woodStep(){
   // 初期版の、丸く短い「コト」
   const base=170+Math.random()*70;
-  tone(base,.055,.225,'triangle');
-  setTimeout(()=>tone(base*.62,.07,.135,'sine'),22);
+  tone(base,.055,.36,'triangle');
+  setTimeout(()=>tone(base*.62,.07,.22,'sine'),22);
 }
 
 function woodRollTick(speed=0.5){
@@ -132,9 +132,9 @@ function woodRollTick(speed=0.5){
   gesture.lastSoundAt=now;
   const variants=[145,165,185,205];
   const base=variants[Math.floor(Math.random()*variants.length)];
-  tone(base,.06,.162+Math.random()*.063,'triangle');
+  tone(base,.06,.28+Math.random()*.09,'triangle');
   if(Math.random()<.45){
-    setTimeout(()=>tone(base*.7,.055,.099,'sine'),28);
+    setTimeout(()=>tone(base*.7,.055,.17,'sine'),28);
   }
 }
 
@@ -157,7 +157,7 @@ function whoosh(){
 const ENV_SRC='audio/kankyouon.m4a';
 const ENV_VOLUME=.80;
 const ENV_WAR_VOLUME=.28;
-const ENV_FADE_SEC=2.2;
+const ENV_FADE_SEC=3.8;
 
 const envA=new Audio(ENV_SRC);
 const envB=new Audio(ENV_SRC);
@@ -189,21 +189,40 @@ function setEnvVolumeImmediately(v){
 
 function fadePair(outAudio,inAudio,target,seconds=ENV_FADE_SEC){
   if(envFadeTimer!==null)clearInterval(envFadeTimer);
-  const steps=30;
+  const steps=60;
   let step=0;
   const interval=Math.max(16,(seconds*1000)/steps);
-  const outStart=outAudio.volume;
+  const outStart=Math.min(outAudio.volume,target);
+
   inAudio.volume=0;
   envFadeTimer=setInterval(()=>{
     step++;
     const t=Math.min(1,step/steps);
-    outAudio.volume=Math.max(0,outStart*(1-t));
-    inAudio.volume=Math.min(1,target*t);
+
+    // cosine curve, but keep the combined level slightly below normal
+    // during overlap because both clips contain correlated ambience.
+    const smooth=(1-Math.cos(Math.PI*t))/2;
+    const safety=0.88;
+    const outGain=(1-smooth)*outStart*safety;
+    const inGain=smooth*target*safety;
+
+    outAudio.volume=Math.max(0,Math.min(1,outGain));
+    inAudio.volume=Math.max(0,Math.min(1,inGain));
+
     if(t>=1){
       clearInterval(envFadeTimer);
       envFadeTimer=null;
       outAudio.pause();
       outAudio.currentTime=0;
+      // restore the new current stream smoothly to the normal target
+      const from=inAudio.volume;
+      let r=0;
+      const restore=setInterval(()=>{
+        r++;
+        const u=Math.min(1,r/12);
+        inAudio.volume=from+(target-from)*u;
+        if(u>=1)clearInterval(restore);
+      },25);
     }
   },interval);
 }
@@ -211,7 +230,7 @@ function fadePair(outAudio,inAudio,target,seconds=ENV_FADE_SEC){
 function scheduleEnvironmentTransition(){
   clearTimeout(envTimer);
   const dur=Number.isFinite(envCurrent.duration)?envCurrent.duration:32;
-  const remaining=Math.max(3,dur-envCurrent.currentTime-ENV_FADE_SEC);
+  const remaining=Math.max(4.2,dur-envCurrent.currentTime-ENV_FADE_SEC);
   envTimer=setTimeout(async()=>{
     if(!envRunning)return;
     try{

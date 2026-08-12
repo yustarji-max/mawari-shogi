@@ -428,3 +428,8 @@ body.rules-open{overflow:hidden}
 .gold {
   background:linear-gradient(100deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.02) 50%,rgba(118,79,35,.035) 100%),#ecd39a !important;
 }
+
+.header-actions{display:flex;gap:7px}
+.money{font-weight:900;font-variant-numeric:tabular-nums;color:#5d4528}
+.record-card{padding:10px 0;border-bottom:1px solid #ddd3c5;line-height:1.65;font-size:13px}
+.record-card b{font-size:16px}

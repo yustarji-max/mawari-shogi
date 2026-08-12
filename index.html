@@ -3,17 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>まわり将棋 v1.0.27</title>
-  <link rel="stylesheet" href="style.css?v=127">
+  <title>まわり将棋 v1.0.29</title>
+  <link rel="stylesheet" href="style.css?v=129">
 </head>
 <body>
 <main class="app">
   <header class="app-header">
     <div>
       <h1>まわり将棋</h1>
-      <p class="sub">v1.0.27 — 音初期化ホットフィックス</p>
+      <p class="sub">v1.0.29 — 俸禄・記録・出世音 試験版</p>
     </div>
-    <button id="rulesButton" class="rules-button" type="button">ルール</button>
+    <div class="header-actions">
+<button id="recordsButton" class="rules-button" type="button">記録</button>
+<button id="rulesButton" class="rules-button" type="button">ルール</button>
+</div>
   </header>
 
   <section id="setup" class="card">
@@ -77,6 +80,7 @@
         <summary>基本</summary>
         <p>4人で盤の外周を時計回りに進みます。遊ぶ人が少ない席はCPUが担当します。金4枚の合計点だけ進み、最初に王将へ出世した人が1位です。</p>
         <p><b>金：</b>表1点／裏0点／横立ち5点／縦立ち10点</p>
+        <p><b>俸禄：</b>出世すると階級に応じて両を獲得。1周ごとに50両。戦争では上位者が下位者の所持俸禄の半分を奪います。俸禄は勝敗条件ではありません。</p>
       </details>
 
       <details>
@@ -107,7 +111,18 @@
     </div>
   </div>
 
+
+  <div id="recordsModal" class="rules-modal" aria-hidden="true">
+    <div class="rules-panel" role="dialog" aria-modal="true" aria-labelledby="recordsTitle">
+      <div class="rules-head">
+        <h2 id="recordsTitle">記録</h2>
+        <button id="recordsClose" class="rules-close" type="button" aria-label="閉じる">×</button>
+      </div>
+      <div id="recordsContent"></div>
+    </div>
+  </div>
+
 </main>
-<script src="game.js?v=127"></script>
+<script src="game.js?v=129"></script>
 </body>
 </html>

@@ -7,6 +7,9 @@ const NAME_POOL=['たかし','みき','けんじ','ゆうこ','まさる','あ�
 const RANKS=['歩','と','香','成香','桂','成桂','銀','成銀','角','馬','飛','龍','王'];
 const CORNERS=[0,8,16,24];
 const WAR_DELTA={2:[1,-1],3:[2,0,-2],4:[2,1,-1,-2]};
+const HOUROKU_BY_RANK=[0,100,200,300,400,500,600,800,1000,1300,1600,2000,2500];
+const LAP_BONUS=50;
+const PROFILE_KEY='mawari_shogi_profiles_v1';
 
 const board=document.querySelector('#board');
 const hand=document.querySelector('#hand');
@@ -24,6 +27,10 @@ const logEl=document.querySelector('#log');
 const rulesButton=document.querySelector('#rulesButton');
 const rulesModal=document.querySelector('#rulesModal');
 const rulesClose=document.querySelector('#rulesClose');
+const recordsButton=document.querySelector('#recordsButton');
+const recordsModal=document.querySelector('#recordsModal');
+const recordsClose=document.querySelector('#recordsClose');
+const recordsContent=document.querySelector('#recordsContent');
 
 
 
@@ -42,6 +49,92 @@ let gesture={
 };
 
 function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+function loadProfiles(){
+  try{return JSON.parse(localStorage.getItem(PROFILE_KEY)||'[]');}catch(_){return [];}
+}
+function saveProfiles(list){localStorage.setItem(PROFILE_KEY,JSON.stringify(list));}
+function newProfile(name){
+  return {id:'p_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),name,
+    games:0,kings:0,totalEarned:0,totalStolen:0,bestMoney:0,promotions:0,bigPromotions:0,warWins:0};
+}
+function resolveProfile(name){
+  const clean=(name||'プレイヤー').trim();
+  const list=loadProfiles();
+  let p=list.find(x=>x.name===clean);
+  if(!p){p=newProfile(clean);list.push(p);saveProfiles(list);}
+  return p.id;
+}
+function profileById(id){return loadProfiles().find(x=>x.id===id)||null;}
+function updateProfile(id,fn){
+  if(!id)return;
+  const list=loadProfiles(),i=list.findIndex(x=>x.id===id);
+  if(i<0)return;
+  fn(list[i]);saveProfiles(list);
+}
+function addMoney(index,amount,reason=''){
+  const p=players[index];
+  if(!p||amount<=0)return 0;
+  p.money=(p.money||0)+amount;
+  p.gameEarned=(p.gameEarned||0)+amount;
+  if(reason)log(`${p.name}：${reason} ＋${amount.toLocaleString()}両`);
+  return amount;
+}
+function takeMoney(fromIndex,toIndex,amount){
+  const from=players[fromIndex],to=players[toIndex];
+  const actual=Math.max(0,Math.min(from.money||0,Math.floor(amount)));
+  from.money-=actual;to.money=(to.money||0)+actual;to.gameStolen=(to.gameStolen||0)+actual;
+  if(actual)log(`${to.name}：${from.name}から ${actual.toLocaleString()}両`);
+  return actual;
+}
+function awardPromotion(index,beforeRank,afterRank,delta){
+  if(afterRank<=beforeRank)return 0;
+  let total=0;
+  for(let r=beforeRank+1;r<=afterRank;r++)total+=HOUROKU_BY_RANK[r]||0;
+  addMoney(index,total,'出世俸禄');
+  const p=players[index];p.gamePromotions=(p.gamePromotions||0)+(afterRank-beforeRank);
+  if(delta>=2)p.gameBigPromotions=(p.gameBigPromotions||0)+1;
+  return total;
+}
+function awardWarMoney(finish){
+  const pairs=finish.length===2?[[0,1]]:
+              finish.length===3?[[0,2]]:
+              finish.length===4?[[0,3],[1,2]]:[];
+  pairs.forEach(([winnerPos,loserPos])=>{
+    const w=finish[winnerPos],l=finish[loserPos];
+    const amount=Math.floor((players[l].money||0)/2);
+    const got=takeMoney(l,w,amount);
+    if(got){
+      players[w].gameWarWins=(players[w].gameWarWins||0)+1;
+      log(`戦争俸禄：${players[w].name}が${players[l].name}から半分獲得`);
+    }
+  });
+}
+function finalizeHumanRecords(){
+  players.filter(p=>!p.cpu&&p.profileId).forEach(p=>{
+    updateProfile(p.profileId,rec=>{
+      rec.name=p.name;rec.games=(rec.games||0)+1;
+      rec.kings=(rec.kings||0)+(p.done&&p.place===1?1:0);
+      rec.totalEarned=(rec.totalEarned||0)+(p.gameEarned||0);
+      rec.totalStolen=(rec.totalStolen||0)+(p.gameStolen||0);
+      rec.bestMoney=Math.max(rec.bestMoney||0,p.money||0);
+      rec.promotions=(rec.promotions||0)+(p.gamePromotions||0);
+      rec.bigPromotions=(rec.bigPromotions||0)+(p.gameBigPromotions||0);
+      rec.warWins=(rec.warWins||0)+(p.gameWarWins||0);
+    });
+  });
+}
+function renderRecords(){
+  const list=loadProfiles();
+  if(!list.length){recordsContent.innerHTML='<p>まだ記録がありません。</p>';return;}
+  recordsContent.innerHTML=list.map(p=>`<div class="record-card">
+    <b>${p.name}</b>
+    <div>${p.games||0}戦　王 ${p.kings||0}回　戦争勝利 ${p.warWins||0}回</div>
+    <div>最高所持 ${Number(p.bestMoney||0).toLocaleString()}両</div>
+    <div>通算獲得 ${Number(p.totalEarned||0).toLocaleString()}両　戦争獲得 ${Number(p.totalStolen||0).toLocaleString()}両</div>
+    <div>出世 ${p.promotions||0}段　大出世 ${p.bigPromotions||0}回</div>
+  </div>`).join('');
+}
+
 function log(text){const el=document.createElement('div');el.textContent=text;logEl.appendChild(el);logEl.scrollTop=logEl.scrollHeight;}
 function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
 
@@ -86,7 +179,11 @@ let audioEnabled=false;
 const EFFECT_FILES={
   step:['audio/step1.wav','audio/step2.wav','audio/step3.wav'],
   roll:['audio/roll1.wav','audio/roll2.wav','audio/roll3.wav','audio/roll4.wav'],
-  land:['audio/land.wav']
+  land:['audio/land.wav'],
+  rankUp:['audio/rank_up.wav'],
+  rankUpBig:['audio/rank_up_big.wav'],
+  rankDown:['audio/rank_down.wav'],
+  rankDownBig:['audio/rank_down_big.wav']
 };
 const effectBuffers={step:[],roll:[],land:[]};
 let effectsGain=null;
@@ -115,7 +212,7 @@ async function fetchBuffer(url){
 async function loadAllAudioBuffers(){
   // 効果音と環境音は独立して読む。1ファイル失敗しても全部を止めない。
   const effectJobs=[];
-  for(const key of ['step','roll','land']){
+  for(const key of ['step','roll','land','rankUp','rankUpBig','rankDown','rankDownBig']){
     effectBuffers[key]=[];
     EFFECT_FILES[key].forEach((url,idx)=>{
       effectJobs.push(
@@ -168,6 +265,12 @@ function woodRollTick(speed=0.5){
 function clack(){ woodStep(); }
 function thud(){ playEffect('land',0,1.0); }
 function whoosh(){ /* 余計な電子音は鳴らさない */ }
+function rankChangeSound(delta){
+  if(delta>=2)playEffect('rankUpBig',0,.9);
+  else if(delta===1)playEffect('rankUp',0,.9);
+  else if(delta<=-2)playEffect('rankDownBig',0,.86);
+  else if(delta===-1)playEffect('rankDown',0,.86);
+}
 
 function stopEnvironmentEngine(){
   envActive=false;
@@ -399,6 +502,7 @@ function finishGame(winners){
   cancelCpuRoll();
   winners.forEach(i=>{players[i].done=true;players[i].place=1;players[i].pendingKing=false;});
   running=false;busy=false;war=null;warShade.classList.remove('show');
+  finalizeHumanRecords();
 }
 function physicalDisplay(player){
   const same=players.filter(p=>!p.done&&p.rank===player.rank);
@@ -433,7 +537,7 @@ function renderPieces(){
 }
 function renderPlayers(){
   const root=document.querySelector('#players');root.innerHTML='';
-  players.forEach((p,i)=>{const el=document.createElement('div');el.className=`player-box${running&&i===turnIndex&&!p.done?' on':''}`;el.innerHTML=`<b style="color:${p.color}">● ${p.name}</b>${p.isYou?'<span class="you">あなた</span>':''}<br>${RANKS[p.rank]}${p.pendingKing?'（王位未確定）':''}${p.cpu?'・自動':''}${p.carrier!==null&&p.carrier!==undefined?'<br><span class="onbu-note">おんぶ中</span>':''}${p.done?`<br><b>${p.place}位</b>`:''}`;root.appendChild(el);});
+  players.forEach((p,i)=>{const el=document.createElement('div');el.className=`player-box${running&&i===turnIndex&&!p.done?' on':''}`;el.innerHTML=`<b style="color:${p.color}">● ${p.name}</b>${p.isYou?'<span class="you">あなた</span>':''}<br>${RANKS[p.rank]}${p.pendingKing?'（王位未確定）':''}${p.cpu?'・自動':''}<br><span class="money">${Number(p.money||0).toLocaleString()}両</span>${p.carrier!==null&&p.carrier!==undefined?'<br><span class="onbu-note">おんぶ中</span>':''}${p.done?`<br><b>${p.place}位</b>`:''}`;root.appendChild(el);});
 }
 function renderLadder(){
   const root=document.querySelector('#rankRows');root.innerHTML='';
@@ -508,7 +612,12 @@ async function moveNormal(playerIndex,steps){
   await showHand(p.pos,playerIndex,true);
   for(let i=0;i<steps;i++){
     const next=(players[movingBottom].pos+1)%32;
+    const movingMembers=stackMembers(movingBottom);
     moveStackTo(movingBottom,next);
+    movingMembers.forEach(i=>{
+      players[i].travelSteps=(players[i].travelSteps||0)+1;
+      if(players[i].travelSteps%32===0)addMoney(i,LAP_BONUS,'一周');
+    });
     await showHand(next,playerIndex,true);
     renderPieces();clack();await sleep(190);
   }
@@ -545,7 +654,15 @@ function spinGolds(angle){const list=[...roller.querySelectorAll('.gold')],cx=ro
 async function settleGolds(golds){await sleep(140);whoosh();const els=[...roller.querySelectorAll('.gold')];els.forEach((el,i)=>{const g=golds[i];el.className=`gold ${g.type==='side'?'side':g.type==='vertical'?'vertical':''}`;el.textContent=g.type==='back'?'':g.type==='face'?'金':g.label;el.style.left=`${22+i*19}%`;el.style.top='54%';el.style.setProperty('--grot',`${Math.random()*30-15}deg`);});await sleep(560);thud();await sleep(60);}
 
 function promote(playerIndex,delta){const p=players[playerIndex];p.rank=clamp(p.rank+delta,0,12);p.pendingKing=p.rank===12;}
-async function showRankChange(playerIndex,delta,label){const p=players[playerIndex],before=RANKS[p.rank];promote(playerIndex,delta);const after=RANKS[p.rank];await showEvent(label,`<div style="font-size:20px;font-weight:900;color:${p.color}">${p.name}<br>${before} → ${after}</div>`,760);log(`${p.name}：${before} → ${after}`);render();}
+async function showRankChange(playerIndex,delta,label){
+  const p=players[playerIndex],beforeRank=p.rank,before=RANKS[p.rank];
+  promote(playerIndex,delta);
+  const afterRank=p.rank,after=RANKS[p.rank];
+  rankChangeSound(delta);
+  if(afterRank>beforeRank)awardPromotion(playerIndex,beforeRank,afterRank,delta);
+  await showEvent(label,`<div style="font-size:20px;font-weight:900;color:${p.color}">${p.name}<br>${before} → ${after}</div>`,760);
+  log(`${p.name}：${before} → ${after}`);render();
+}
 
 function oppositeGroupFor(playerIndex){
   const p=players[playerIndex],coord=COORDS[p.pos];
@@ -648,6 +765,9 @@ async function resolveWarRoll(value){
       if(d!==0)await showRankChange(playerIndex,d,resultLabel(d));
       else await showEvent('現状維持',`<b style="color:${players[playerIndex].color}">${players[playerIndex].name}</b>`,420);
     }
+    awardWarMoney(finish);
+    render();
+    await sleep(420);
     const bottoms=[...war.involvedBottoms];
     bottoms.forEach(bottom=>dissolveStack(bottom));
     war.active=false;
@@ -931,6 +1051,9 @@ function randomNames(){
   });
 }
 function prepareNames(){
+  let dl=document.querySelector('#profileNames');
+  if(!dl){dl=document.createElement('datalist');dl.id='profileNames';document.body.appendChild(dl);}
+  dl.innerHTML=loadProfiles().map(p=>`<option value="${p.name}"></option>`).join('');
   const root=document.querySelector('#nameGrid');
   root.innerHTML='';
   for(let i=0;i<4;i++){
@@ -939,7 +1062,7 @@ function prepareNames(){
     const label=i===0
       ? `<b style="color:${COLORS[i]}">赤・左上</b><span class="seat-note">あなた</span>`
       : `<b style="color:${COLORS[i]}">席${i+1}</b>`;
-    card.innerHTML=`${label}<input id="name${i}" value="${NAME_POOL[i]}">`;
+    card.innerHTML=`${label}<input id="name${i}" list="profileNames" value="${NAME_POOL[i]}">`;
     root.appendChild(card);
   }
   randomNames();
@@ -957,6 +1080,9 @@ function closeRules(){
   rulesModal.setAttribute('aria-hidden','true');
   document.body.classList.remove('rules-open');
 }
+recordsButton.addEventListener('click',()=>{renderRecords();recordsModal.classList.add('show');recordsModal.setAttribute('aria-hidden','false');document.body.classList.add('rules-open');});
+recordsClose.addEventListener('click',()=>{recordsModal.classList.remove('show');recordsModal.setAttribute('aria-hidden','true');document.body.classList.remove('rules-open');});
+recordsModal.addEventListener('click',e=>{if(e.target===recordsModal)recordsClose.click();});
 rulesButton.addEventListener('click',openRules);
 rulesClose.addEventListener('click',closeRules);
 rulesModal.addEventListener('click',event=>{
@@ -967,7 +1093,14 @@ document.addEventListener('keydown',event=>{
 });
 
 document.querySelector('#randomNames').addEventListener('click',randomNames);
-document.querySelector('#startButton').addEventListener('click',async()=>{cancelCpuRoll();await ensureAudio();const humans=Number(document.querySelector('#humanCount').value);players=[0,1,2,3].map(i=>({name:document.querySelector(`#name${i}`).value||NAME_POOL[i],seat:i,pos:CORNERS[i],rank:0,color:COLORS[i],sleeve:SLEEVES[i],cpu:i>=humans,isYou:i===0,done:false,place:null,pendingKing:false,carrier:null}));logEl.innerHTML='';resultEl.textContent='';war=null;running=false;busy=true;warShade.classList.remove('show');setupGolds();render();await orderPlayers();running=true;busy=false;render();if(!players[0].cpu&&navigator.vibrate)navigator.vibrate(80);if(players[0].cpu)scheduleCpuRoll(650);});
+document.querySelector('#startButton').addEventListener('click',async()=>{cancelCpuRoll();await ensureAudio();const humans=Number(document.querySelector('#humanCount').value);players=[0,1,2,3].map(i=>{
+  const name=document.querySelector(`#name${i}`).value||NAME_POOL[i];
+  const cpu=i>=humans;
+  return {name,seat:i,pos:CORNERS[i],rank:0,color:COLORS[i],sleeve:SLEEVES[i],cpu,isYou:i===0,
+    done:false,place:null,pendingKing:false,carrier:null,money:0,travelSteps:0,
+    gameEarned:0,gameStolen:0,gamePromotions:0,gameBigPromotions:0,gameWarWins:0,
+    profileId:cpu?null:resolveProfile(name)};
+});logEl.innerHTML='';resultEl.textContent='';war=null;running=false;busy=true;warShade.classList.remove('show');setupGolds();render();await orderPlayers();running=true;busy=false;render();if(!players[0].cpu&&navigator.vibrate)navigator.vibrate(80);if(players[0].cpu)scheduleCpuRoll(650);});
 window.addEventListener('resize',setupGolds);
 
 makeBoard();prepareNames();setupGolds();renderLadder();updateUI();updateRollHint();

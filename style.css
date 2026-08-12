@@ -409,3 +409,22 @@ body.rules-open{overflow:hidden}
 .piece,.gold,.battle-gauge-marker{
   -webkit-clip-path:polygon(50% 0%,79% 23%,100% 100%,0% 100%,21% 23%);
 }
+
+/* v1.0.26 駒の見た目 */
+.piece,.gold,.battle-gauge-marker {
+  clip-path:polygon(50% 0%,84% 27%,100% 100%,0% 100%,16% 27%) !important;
+  -webkit-clip-path:polygon(50% 0%,84% 27%,100% 100%,0% 100%,16% 27%) !important;
+}
+.piece {
+  background:linear-gradient(100deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.02) 48%,rgba(118,79,35,.035) 100%),#efd8a5 !important;
+  border:1px solid rgba(91,62,31,.72) !important;
+  box-shadow:0 1.5px 2.5px rgba(45,31,18,.22),inset 0 0 0 .5px rgba(255,255,255,.24) !important;
+}
+.piece::before,.piece::after {
+  background:none !important;
+  border:none !important;
+  box-shadow:none !important;
+}
+.gold {
+  background:linear-gradient(100deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.02) 50%,rgba(118,79,35,.035) 100%),#ecd39a !important;
+}

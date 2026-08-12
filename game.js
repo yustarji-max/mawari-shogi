@@ -79,209 +79,162 @@ function offsetFor(index,count){
 
 
 
+
 let audioEnabled=false;
-let effectsMaster=null;
-let effectsCompressor=null;
 
-function prepareEffectsOutput(){
-  if(!audioContext)return;
-  if(effectsMaster&&effectsCompressor)return;
+// ===== 効果音：WAVファイルをAudioBufferで再生 =====
+const EFFECT_FILES={
+  step:['audio/step1.wav','audio/step2.wav','audio/step3.wav'],
+  roll:['audio/roll1.wav','audio/roll2.wav','audio/roll3.wav','audio/roll4.wav'],
+  land:['audio/land.wav']
+};
+const effectBuffers={step:[],roll:[],land:[]};
+let effectsGain=null;
 
-  effectsMaster=audioContext.createGain();
-  effectsMaster.gain.value=2.35;
+// ===== 環境音：AudioContext上で時間指定して途切れなくクロスフェード =====
+const ENV_SRC='audio/kankyouon.m4a';
+const ENV_VOLUME=.80;
+const ENV_WAR_VOLUME=.28;
+const ENV_OVERLAP=3.6;
+let envBuffer=null;
+let envTargetVolume=ENV_VOLUME;
+let envActive=false;
+let envGeneration=0;
+let envPlannerTimer=null;
+let envNextStart=0;
+let envScheduledUntil=0;
+const envNodes=[];
 
-  effectsCompressor=audioContext.createDynamicsCompressor();
-  effectsCompressor.threshold.value=-22;
-  effectsCompressor.knee.value=18;
-  effectsCompressor.ratio.value=5;
-  effectsCompressor.attack.value=.003;
-  effectsCompressor.release.value=.16;
-
-  // 効果音は環境音に埋もれないようコンプレッサーを通さず直接出力。
-  effectsMaster.connect(audioContext.destination);
+async function fetchBuffer(url){
+  const res=await fetch(url,{cache:'force-cache'});
+  if(!res.ok)throw new Error(`audio fetch ${res.status}`);
+  const arr=await res.arrayBuffer();
+  return await audioContext.decodeAudioData(arr.slice(0));
 }
 
-function tone(freq,duration=.04,volume=.025,type='triangle',delay=0){
+async function loadAllAudioBuffers(){
+  const jobs=[];
+  for(const key of ['step','roll','land']){
+    effectBuffers[key]=[];
+    EFFECT_FILES[key].forEach((url,idx)=>{
+      jobs.push(fetchBuffer(url).then(buf=>effectBuffers[key][idx]=buf));
+    });
+  }
+  jobs.push(fetchBuffer(ENV_SRC).then(buf=>envBuffer=buf));
+  await Promise.all(jobs);
+}
+
+function playEffect(kind,index=null,volume=1){
   if(!audioContext||audioContext.state!=='running')return;
-  const start=audioContext.currentTime+delay;
-  const osc=audioContext.createOscillator();
-  const gain=audioContext.createGain();
-  osc.type=type;
-  osc.frequency.setValueAtTime(freq,start);
-  gain.gain.setValueAtTime(Math.max(volume,.0001),start);
-  gain.gain.exponentialRampToValueAtTime(.0001,start+duration);
-  prepareEffectsOutput();
-  osc.connect(gain);
-  gain.connect(effectsMaster||audioContext.destination);
-  osc.start(start);
-  osc.stop(start+duration+.01);
+  const list=effectBuffers[kind];
+  if(!list||!list.length)return;
+  const buf=list[index===null?Math.floor(Math.random()*list.length):index%list.length];
+  if(!buf)return;
+  const src=audioContext.createBufferSource();
+  const g=audioContext.createGain();
+  src.buffer=buf;
+  // WAV自体を-0.7dBFSに正規化済み。ここでは十分前に出す。
+  g.gain.value=volume;
+  src.connect(g);
+  g.connect(effectsGain||audioContext.destination);
+  src.start();
 }
 
-function woodStep(){
-  // 初期版の、丸く短い「コト」
-  const base=170+Math.random()*70;
-  tone(base,.055,.36,'triangle');
-  setTimeout(()=>tone(base*.62,.07,.22,'sine'),22);
-}
+function woodStep(){ playEffect('step',null,1.0); }
 
 function woodRollTick(speed=0.5){
-  // 初期版の音量・音色・ランダム感
   const now=performance.now();
   const minGap=clamp(260-speed*150,105,260);
   if(now-gesture.lastSoundAt<minGap)return;
   gesture.lastSoundAt=now;
-  const variants=[145,165,185,205];
-  const base=variants[Math.floor(Math.random()*variants.length)];
-  tone(base,.06,.28+Math.random()*.09,'triangle');
-  if(Math.random()<.45){
-    setTimeout(()=>tone(base*.7,.055,.17,'sine'),28);
+  playEffect('roll',null,1.0);
+}
+
+function clack(){ woodStep(); }
+function thud(){ playEffect('land',0,1.0); }
+function whoosh(){ /* 余計な電子音は鳴らさない */ }
+
+function stopEnvironmentEngine(){
+  envActive=false;
+  envGeneration++;
+  if(envPlannerTimer!==null){clearTimeout(envPlannerTimer);envPlannerTimer=null;}
+  while(envNodes.length){
+    const n=envNodes.pop();
+    try{n.source.stop();}catch(_){}
   }
 }
 
-function clack(){
-  woodStep();
+function scheduleEnvClip(startTime,generation){
+  if(!envBuffer||generation!==envGeneration)return;
+  const dur=envBuffer.duration;
+  const src=audioContext.createBufferSource();
+  const gain=audioContext.createGain();
+  src.buffer=envBuffer;
+  src.connect(gain);
+  gain.connect(audioContext.destination);
+
+  const overlap=Math.min(ENV_OVERLAP,dur*.2);
+  const endTime=startTime+dur;
+  const fadeInEnd=startTime+overlap;
+  const fadeOutStart=endTime-overlap;
+
+  gain.gain.setValueAtTime(0,startTime);
+  gain.gain.linearRampToValueAtTime(envTargetVolume,fadeInEnd);
+  gain.gain.setValueAtTime(envTargetVolume,fadeOutStart);
+  gain.gain.linearRampToValueAtTime(0,endTime);
+
+  src.start(startTime);
+  src.stop(endTime+.05);
+  envNodes.push({source:src,gain,startTime,endTime,generation});
+
+  // 次音源は「終了前 overlap 秒」にAudioContext時刻で正確に開始。
+  return endTime-overlap;
 }
 
-function thud(){
-  tone(105,.11,.405,'triangle');
-  setTimeout(()=>tone(72,.12,.162,'sine'),28);
-}
+function planEnvironment(generation){
+  if(!envActive||generation!==envGeneration||!envBuffer)return;
 
-function whoosh(){
-  tone(350,.07,.135,'triangle');
-  setTimeout(()=>tone(220,.10,.108,'sine'),45);
-}
+  const now=audioContext.currentTime;
+  const lookAhead=18;
 
-
-// ===== 環境音：2本交互のクロスフェード再生 =====
-const ENV_SRC='audio/kankyouon.m4a';
-const ENV_VOLUME=.80;
-const ENV_WAR_VOLUME=.28;
-const ENV_FADE_SEC=3.8;
-
-const envA=new Audio(ENV_SRC);
-const envB=new Audio(ENV_SRC);
-[envA,envB].forEach(a=>{
-  a.preload='auto';
-  a.playsInline=true;
-  a.loop=false;
-  a.volume=0;
-});
-
-let envCurrent=envA;
-let envNext=envB;
-let envTimer=null;
-let envFadeTimer=null;
-let envBaseVolume=ENV_VOLUME;
-let envRunning=false;
-
-function clearEnvironmentTimers(){
-  if(envTimer!==null){clearTimeout(envTimer);envTimer=null;}
-  if(envFadeTimer!==null){clearInterval(envFadeTimer);envFadeTimer=null;}
-}
-
-function setEnvVolumeImmediately(v){
-  envBaseVolume=v;
-  if(envRunning){
-    envCurrent.volume=Math.min(v,1);
+  while(envNextStart < now+lookAhead){
+    const next=scheduleEnvClip(envNextStart,generation);
+    if(typeof next!=='number')break;
+    envNextStart=next;
   }
+
+  // 古いノード参照を掃除
+  for(let i=envNodes.length-1;i>=0;i--){
+    if(envNodes[i].endTime < now-1) envNodes.splice(i,1);
+  }
+
+  envPlannerTimer=setTimeout(()=>planEnvironment(generation),3000);
 }
 
-function fadePair(outAudio,inAudio,target,seconds=ENV_FADE_SEC){
-  if(envFadeTimer!==null)clearInterval(envFadeTimer);
-  const steps=60;
-  let step=0;
-  const interval=Math.max(16,(seconds*1000)/steps);
-  const outStart=Math.min(outAudio.volume,target);
-
-  inAudio.volume=0;
-  envFadeTimer=setInterval(()=>{
-    step++;
-    const t=Math.min(1,step/steps);
-
-    // cosine curve, but keep the combined level slightly below normal
-    // during overlap because both clips contain correlated ambience.
-    const smooth=(1-Math.cos(Math.PI*t))/2;
-    const safety=0.88;
-    const outGain=(1-smooth)*outStart*safety;
-    const inGain=smooth*target*safety;
-
-    outAudio.volume=Math.max(0,Math.min(1,outGain));
-    inAudio.volume=Math.max(0,Math.min(1,inGain));
-
-    if(t>=1){
-      clearInterval(envFadeTimer);
-      envFadeTimer=null;
-      outAudio.pause();
-      outAudio.currentTime=0;
-      // restore the new current stream smoothly to the normal target
-      const from=inAudio.volume;
-      let r=0;
-      const restore=setInterval(()=>{
-        r++;
-        const u=Math.min(1,r/12);
-        inAudio.volume=from+(target-from)*u;
-        if(u>=1)clearInterval(restore);
-      },25);
-    }
-  },interval);
+async function startEnvironmentEngine(){
+  if(!audioContext||!envBuffer)return;
+  stopEnvironmentEngine();
+  envActive=true;
+  const generation=++envGeneration;
+  // 最初の音は待たせず100ms後に開始。最初だけ数秒無音になる問題を防止。
+  envNextStart=audioContext.currentTime+.10;
+  planEnvironment(generation);
 }
 
-function scheduleEnvironmentTransition(){
-  clearTimeout(envTimer);
-  const dur=Number.isFinite(envCurrent.duration)?envCurrent.duration:32;
-  const remaining=Math.max(4.2,dur-envCurrent.currentTime-ENV_FADE_SEC);
-  envTimer=setTimeout(async()=>{
-    if(!envRunning)return;
+function updateEnvironmentVolume(target,ms=350){
+  envTargetVolume=target;
+  if(!audioContext)return;
+  const now=audioContext.currentTime;
+  const end=now+ms/1000;
+  envNodes.forEach(n=>{
+    if(n.endTime<=now)return;
     try{
-      envNext.currentTime=0;
-      envNext.volume=0;
-      await envNext.play();
-      fadePair(envCurrent,envNext,envBaseVolume,ENV_FADE_SEC);
-      const old=envCurrent;
-      envCurrent=envNext;
-      envNext=old;
-      setTimeout(scheduleEnvironmentTransition,Math.ceil(ENV_FADE_SEC*1000)+80);
-    }catch(_){
-      // 再生失敗時は少し待って再試行。効果音は止めない。
-      envTimer=setTimeout(scheduleEnvironmentTransition,1000);
-    }
-  },remaining*1000);
-}
-
-async function startEnvironment(){
-  if(envRunning)return;
-  envRunning=true;
-  clearEnvironmentTimers();
-  try{
-    envCurrent.currentTime=0;
-    envCurrent.volume=envBaseVolume;
-    envNext.pause();
-    envNext.currentTime=0;
-    envNext.volume=0;
-    await envCurrent.play();
-    scheduleEnvironmentTransition();
-  }catch(_){
-    envRunning=false;
-  }
-}
-
-function stopEnvironment(){
-  envRunning=false;
-  clearEnvironmentTimers();
-  envA.pause();
-  envB.pause();
-}
-
-async function fadeEnvironmentTo(target,ms=320){
-  envBaseVolume=target;
-  const start=envCurrent.volume;
-  const steps=12;
-  for(let i=1;i<=steps;i++){
-    if(!envRunning)break;
-    envCurrent.volume=start+(target-start)*(i/steps);
-    await sleep(ms/steps);
-  }
+      const current=n.gain.gain.value;
+      n.gain.gain.cancelScheduledValues(now);
+      n.gain.gain.setValueAtTime(current,now);
+      n.gain.gain.linearRampToValueAtTime(target,end);
+    }catch(_){}
+  });
 }
 
 async function ensureAudio(){
@@ -289,17 +242,27 @@ async function ensureAudio(){
     if(!audioContext)audioContext=new (window.AudioContext||window.webkitAudioContext)();
     if(audioContext.state!=='running')await audioContext.resume();
 
-    prepareEffectsOutput();
-    audioEnabled=audioContext.state==='running';
+    if(!effectsGain){
+      effectsGain=audioContext.createGain();
+      // 効果音は環境音より明確に前へ。クリップはWAV側で防止。
+      effectsGain.gain.value=1.0;
+      effectsGain.connect(audioContext.destination);
+    }
 
+    if(!envBuffer||!effectBuffers.step.length){
+      await loadAllAudioBuffers();
+    }
+
+    audioEnabled=audioContext.state==='running';
     if(audioEnabled){
-      if(!envRunning)await startEnvironment();
+      await startEnvironmentEngine();
       audioButton.classList.remove('show');
     }else{
       audioButton.classList.add('show');
     }
     return audioEnabled;
-  }catch(_){
+  }catch(error){
+    console.error('audio init failed',error);
     audioEnabled=false;
     audioButton.classList.add('show');
     return false;
@@ -307,10 +270,10 @@ async function ensureAudio(){
 }
 
 async function enterWarSound(){
-  if(audioEnabled)await fadeEnvironmentTo(ENV_WAR_VOLUME,260);
+  if(audioEnabled)updateEnvironmentVolume(ENV_WAR_VOLUME,260);
 }
 async function leaveWarSound(){
-  if(audioEnabled)await fadeEnvironmentTo(ENV_VOLUME,420);
+  if(audioEnabled)updateEnvironmentVolume(ENV_VOLUME,420);
 }
 
 function startBattleGauge(){
@@ -935,9 +898,11 @@ audioButton.addEventListener('click',async()=>{
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'){
     if(audioContext&&audioContext.state!=='running')audioButton.classList.add('show');
-    if(audioEnabled&&!envRunning)startEnvironment().catch(()=>{});
+    if(audioEnabled&&audioContext&&audioContext.state==='running'){
+      startEnvironmentEngine().catch(()=>{});
+    }
   }else{
-    stopEnvironment();
+    stopEnvironmentEngine();
   }
 });
 document.addEventListener('pointerdown',()=>{if(audioContext&&audioContext.state!=='running')ensureAudio();},{capture:true,passive:true});

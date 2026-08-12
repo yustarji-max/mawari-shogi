@@ -1,4 +1,4 @@
-// v1.0.6: 効果音はこのファイル内に内蔵されています。audioフォルダは不要です。
+// v1.0.21: 効果音はこのファイル内に内蔵されています。audioフォルダは不要です。
 'use strict';
 
 const COLORS=['#b8493f','#315f8c','#668447','#8a5b91'];
@@ -37,6 +37,9 @@ let running=false;
 let busy=false;
 let war=null;
 let audioContext=null;
+let cpuTimer=null;
+let cpuJobId=0;
+let repairingTurn=false;
 let gesture={
   active:false,cx:0,cy:0,last:0,total:0,lastSoundAt:0,
   gaugePos:.08,gaugeDir:1,gaugeLastFrame:0,gaugeRaf:null
@@ -302,6 +305,7 @@ function resultLabel(delta){
   return '大降格…';
 }
 function finishGame(winners){
+  cancelCpuRoll();
   winners.forEach(i=>{players[i].done=true;players[i].place=1;players[i].pendingKing=false;});
   running=false;busy=false;war=null;warShade.classList.remove('show');
 }
@@ -316,7 +320,7 @@ function physicalDisplay(player){
 function pieceHTML(player){const [base,helper]=physicalDisplay(player);return helper?`${base}<span class="helper">＋${helper}</span>`:base;}
 
 function renderPieces(){
-  board.querySelectorAll('.piece,.cushion,.war-line,.war-label').forEach(el=>el.remove());
+  board.querySelectorAll('.piece,.cushion,.war-line,.war-label,.war-flag').forEach(el=>el.remove());
   if(war){renderWarOnBoard();return;}
   const bottoms=players.map((p,i)=>!p.done&&stackBottom(i)===i?i:-1).filter(i=>i>=0);
   const groups=new Map();
@@ -364,10 +368,11 @@ function updateUI(){
     // 操作案内は初回だけ金の上へ表示。戦争の狙い方はルール画面で確認できる。
   }
   else{
-    turnBox.textContent='開始前';
+    turnBox.textContent=running?'ターン確認中…':'開始前';
     turnBox.style.borderColor='transparent';
     rollButton.disabled=true;
     battleGauge.classList.remove('show');
+    if(running)setTimeout(repairTurnState,0);
     // 初回案内の表示状態はlocalStorageで管理。
   }
   renderPlayers();renderLadder();
@@ -479,6 +484,33 @@ function renderWarOnBoard(){
   if(Math.abs(a[0]-b[0])<.01){line.style.left=`${Math.min(parseFloat(pa.left),parseFloat(pb.left))}%`;line.style.top=`calc(${parseFloat(pa.top)}% - 3px)`;line.style.width=`${Math.abs(parseFloat(pb.left)-parseFloat(pa.left))}%`;line.style.height='6px';}
   else{line.style.left=`calc(${parseFloat(pa.left)}% - 3px)`;line.style.top=`${Math.min(parseFloat(pa.top),parseFloat(pb.top))}%`;line.style.height=`${Math.abs(parseFloat(pb.top)-parseFloat(pa.top))}%`;line.style.width='6px';}
   board.insertBefore(line,warShade);
+
+  // 各プレイヤーの色の旗を「元の持ち場」に残す。
+  // 往路は旗から離れ、復路は自分の旗へ戻るので方向が一目で分かる。
+  const flagGroups=new Map();
+  war.participants.forEach(index=>{
+    const side=war.side.get(index);
+    const path=side===0?war.pathA:war.pathB;
+    const key=String(side);
+    const list=flagGroups.get(key)||[];
+    list.push({index,path});
+    flagGroups.set(key,list);
+  });
+  flagGroups.forEach(items=>{
+    items.forEach((item,j)=>{
+      const off=offsetFor(j,items.length);
+      const home=item.path[0];
+      const ps=pctFromRC(home[0],home[1],[off[0],off[1]-1.1]);
+      const flag=document.createElement('div');
+      flag.className='war-flag';
+      flag.style.left=ps.left;
+      flag.style.top=ps.top;
+      flag.style.setProperty('--flag',players[item.index].color);
+      flag.title=`${players[item.index].name}の旗`;
+      board.insertBefore(flag,warShade);
+    });
+  });
+
   const positionGroups=new Map();
   war.participants.forEach(index=>{const side=war.side.get(index),progress=war.progress.get(index),path=side===0?war.pathA:war.pathB;const key=`${path[progress][0].toFixed(2)},${path[progress][1].toFixed(2)}`;const list=positionGroups.get(key)||[];list.push(index);positionGroups.set(key,list);});
   positionGroups.forEach(indices=>indices.forEach((index,j)=>{const side=war.side.get(index),progress=war.progress.get(index),path=side===0?war.pathA:war.pathB,[r,c]=path[progress],off=offsetFor(j,indices.length),ps=pctFromRC(r,c,off),piece=document.createElement('div');piece.className='piece';piece.style.left=ps.left;piece.style.top=ps.top;piece.style.setProperty('--rot',`${warDirection(path,progress)}deg`);piece.style.filter=`drop-shadow(0 0 9px ${players[index].color}) drop-shadow(0 3px 2px #0003)`;piece.innerHTML=pieceHTML(players[index]);board.insertBefore(piece,warShade);const label=document.createElement('div');label.className='war-label';label.style.left=ps.left;label.style.top=`calc(${ps.top} + 6%)`;label.style.color=players[index].color;label.textContent=players[index].name;board.insertBefore(label,warShade);}));
@@ -501,7 +533,7 @@ async function startWar(participants){
     pathA:makePath(homePos,enemyPos),
     pathB:makePath(enemyPos,homePos)
   };
-  render();await enterWarSound();await showEvent(participants.length===4?'乱戦！':'戦争',`<b>${participants.map(i=>players[i].name).join('・')}</b>`,800);busy=false;updateUI();if(players[currentWarPlayerIndex()].cpu)setTimeout(autoRoll,650);
+  render();await enterWarSound();await showEvent(participants.length===4?'乱戦！':'戦争',`<b>${participants.map(i=>players[i].name).join('・')}</b>`,800);busy=false;updateUI();if(players[currentWarPlayerIndex()].cpu)scheduleCpuRoll(650);
 }
 async function moveWarPlayer(playerIndex,steps){
   for(let s=0;s<steps;s++){
@@ -536,7 +568,7 @@ async function resolveWarRoll(value){
     nextTurn();
     return;
   }
-  do{war.turnCursor=(war.turnCursor+1)%war.order.length;}while(war.finish.includes(war.order[war.turnCursor]));busy=false;render();if(players[currentWarPlayerIndex()].cpu)setTimeout(autoRoll,650);
+  do{war.turnCursor=(war.turnCursor+1)%war.order.length;}while(war.finish.includes(war.order[war.turnCursor]));busy=false;render();if(players[currentWarPlayerIndex()].cpu)scheduleCpuRoll(650);
 }
 
 async function resolveNormalRoll(value){
@@ -588,18 +620,117 @@ async function performRoll(battleTier=0){
     resultEl.textContent=`エラー：${error?.message||error}`;
     log(`エラー：${error?.message||error}`);
     render();
+    if(running){
+      const idx=activeTurnIndex();
+      if(idx>=0&&players[idx]?.cpu)scheduleCpuRoll(900);
+    }
   }finally{
     setupGolds();
   }
 }
-async function autoRoll(){
-  if(busy||!running)return;
+
+function activeTurnIndex(){
+  if(!running)return -1;
+  if(war){
+    if(!Array.isArray(war.order)||war.order.length===0)return -1;
+    const i=war.order[war.turnCursor];
+    return Number.isInteger(i)?i:-1;
+  }
+  return Number.isInteger(turnIndex)?turnIndex:-1;
+}
+
+function cancelCpuRoll(){
+  if(cpuTimer!==null){
+    clearTimeout(cpuTimer);
+    cpuTimer=null;
+  }
+  cpuJobId++;
+}
+
+function scheduleCpuRoll(delay=650){
+  if(cpuTimer!==null)clearTimeout(cpuTimer);
+  const expectedIndex=activeTurnIndex();
+  const expectedWar=war;
+  const job=++cpuJobId;
+
+  if(!running || expectedIndex<0 || !players[expectedIndex]?.cpu){
+    cpuTimer=null;
+    return;
+  }
+
+  cpuTimer=setTimeout(async()=>{
+    cpuTimer=null;
+    if(
+      job!==cpuJobId ||
+      !running ||
+      busy ||
+      war!==expectedWar ||
+      activeTurnIndex()!==expectedIndex ||
+      !players[expectedIndex]?.cpu
+    ) return;
+
+    await autoRoll(job,expectedIndex,expectedWar);
+  },delay);
+}
+
+function repairTurnState(){
+  if(repairingTurn||!running)return;
+  repairingTurn=true;
+  try{
+    if(war){
+      if(!Array.isArray(war.order)||war.order.length===0){
+        console.error('Invalid war order; cancelling war safely');
+        war=null;
+        warShade.classList.remove('show');
+      }else if(!Number.isInteger(war.turnCursor) || !war.order[war.turnCursor]){
+        war.turnCursor=0;
+      }
+    }else if(!Number.isInteger(turnIndex) || !players[turnIndex] || players[turnIndex].done){
+      const next=players.findIndex(p=>!p.done);
+      if(next>=0)turnIndex=next;
+    }
+    busy=false;
+    render();
+    const idx=activeTurnIndex();
+    if(idx>=0&&players[idx]?.cpu)scheduleCpuRoll(700);
+  }finally{
+    repairingTurn=false;
+  }
+}
+
+async function autoRoll(job=cpuJobId,expectedIndex=activeTurnIndex(),expectedWar=war){
+  if(
+    job!==cpuJobId ||
+    busy ||
+    !running ||
+    expectedIndex<0 ||
+    activeTurnIndex()!==expectedIndex ||
+    war!==expectedWar ||
+    !players[expectedIndex]?.cpu
+  ) return;
+
   spinGolds(Math.random()*6);
   gesture.lastSoundAt=0;
+
   for(let i=0;i<5;i++){
+    if(
+      job!==cpuJobId ||
+      !running ||
+      war!==expectedWar ||
+      activeTurnIndex()!==expectedIndex
+    ) return;
+
     woodRollTick(.45);
     await sleep(165+Math.random()*45);
   }
+
+  if(
+    job!==cpuJobId ||
+    !running ||
+    war!==expectedWar ||
+    activeTurnIndex()!==expectedIndex
+  ) return;
+
   let tier=0;
   if(war){
     const r=Math.random();
@@ -609,10 +740,11 @@ async function autoRoll(){
 }
 function nextTurn(){
   if(!running)return;
+  cancelCpuRoll();
   do{turnIndex=(turnIndex+1)%players.length;}while(players[turnIndex].done);
   render();
   if(!players[turnIndex].cpu&&navigator.vibrate)navigator.vibrate(80);
-  if(players[turnIndex].cpu)setTimeout(autoRoll,650);
+  if(players[turnIndex].cpu)scheduleCpuRoll(650);
 }
 
 
@@ -744,7 +876,7 @@ document.addEventListener('keydown',event=>{
 });
 
 document.querySelector('#randomNames').addEventListener('click',randomNames);
-document.querySelector('#startButton').addEventListener('click',async()=>{await ensureAudio();const humans=Number(document.querySelector('#humanCount').value);players=[0,1,2,3].map(i=>({name:document.querySelector(`#name${i}`).value||NAME_POOL[i],seat:i,pos:CORNERS[i],rank:0,color:COLORS[i],sleeve:SLEEVES[i],cpu:i>=humans,isYou:i===0,done:false,place:null,pendingKing:false,carrier:null}));logEl.innerHTML='';resultEl.textContent='';war=null;running=false;busy=true;warShade.classList.remove('show');setupGolds();render();await orderPlayers();running=true;busy=false;render();if(!players[0].cpu&&navigator.vibrate)navigator.vibrate(80);if(players[0].cpu)setTimeout(autoRoll,650);});
+document.querySelector('#startButton').addEventListener('click',async()=>{cancelCpuRoll();await ensureAudio();const humans=Number(document.querySelector('#humanCount').value);players=[0,1,2,3].map(i=>({name:document.querySelector(`#name${i}`).value||NAME_POOL[i],seat:i,pos:CORNERS[i],rank:0,color:COLORS[i],sleeve:SLEEVES[i],cpu:i>=humans,isYou:i===0,done:false,place:null,pendingKing:false,carrier:null}));logEl.innerHTML='';resultEl.textContent='';war=null;running=false;busy=true;warShade.classList.remove('show');setupGolds();render();await orderPlayers();running=true;busy=false;render();if(!players[0].cpu&&navigator.vibrate)navigator.vibrate(80);if(players[0].cpu)scheduleCpuRoll(650);});
 window.addEventListener('resize',setupGolds);
 
 makeBoard();prepareNames();setupGolds();renderLadder();updateUI();updateRollHint();

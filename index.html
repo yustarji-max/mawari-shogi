@@ -3,23 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>まわり将棋 v1.0.29</title>
-  <link rel="stylesheet" href="style.css?v=129">
+  <title>まわり将棋 v1.0.31</title>
+  <link rel="stylesheet" href="style.css?v=131">
 </head>
 <body>
 <main class="app">
-  <header class="app-header">
-    <div>
-      <h1>まわり将棋</h1>
-      <p class="sub">v1.0.29 — 俸禄・記録・出世音 試験版</p>
-    </div>
-    <div class="header-actions">
-<button id="recordsButton" class="rules-button" type="button">記録</button>
-<button id="rulesButton" class="rules-button" type="button">ルール</button>
-</div>
-  </header>
-
-  <section id="setup" class="card">
+<section id="startScreen" class="screen start-screen">
+<div class="start-card"><div class="start-brand"><h1>まわり将棋</h1><div class="start-subtitle">戦争（仮）</div></div>
+<section id="setup" class="card">
     <div class="setup-row">
       <label for="humanCount">遊ぶ人数</label>
       <select id="humanCount">
@@ -31,6 +22,24 @@
     <div id="nameGrid" class="name-grid"></div>
     <button id="startButton">ゲーム開始</button>
   </section>
+<div class="start-links"><button id="startRecordsButton" class="quiet-button" type="button">記録</button><button id="startRulesButton" class="quiet-button" type="button">ルール</button></div>
+</div></section>
+<section id="gameScreen" class="screen game-screen" hidden>
+<div class="game-topbar"><button id="backToStartButton" class="back-start-button" type="button">← スタート画面</button>
+<div class="game-actions"><header class="app-header">
+    <div>
+      <h1>まわり将棋</h1>
+      <p class="sub">v1.0.31 — スタート画面・金デザイン修正版</p>
+    </div>
+    <div class="header-actions">
+<button id="recordsButton" class="rules-button" type="button">記録</button>
+<button id="rulesButton" class="rules-button" type="button">ルール</button>
+</div>
+  </header></div></div>
+
+  
+
+  
 
   <section class="card game-card">
     <div class="board-row">
@@ -80,7 +89,19 @@
         <summary>基本</summary>
         <p>4人で盤の外周を時計回りに進みます。遊ぶ人が少ない席はCPUが担当します。金4枚の合計点だけ進み、最初に王将へ出世した人が1位です。</p>
         <p><b>金：</b>表1点／裏0点／横立ち5点／縦立ち10点</p>
-        <p><b>俸禄：</b>出世すると階級に応じて両を獲得。1周ごとに50両。戦争では上位者が下位者の所持俸禄の半分を奪います。俸禄は勝敗条件ではありません。</p>
+        <div class="rules-block"><h3>俸禄</h3>
+<p>出世すると、到達した階級に応じた俸禄を獲得します。降格後に同じ階級へ再出世した場合も、もう一度受け取れます。</p>
+<table class="houroku-table"><tbody>
+<tr><th>と</th><td>100両</td></tr><tr><th>香車</th><td>200両</td></tr>
+<tr><th>成香</th><td>300両</td></tr><tr><th>桂馬</th><td>400両</td></tr>
+<tr><th>成桂</th><td>500両</td></tr><tr><th>銀</th><td>600両</td></tr>
+<tr><th>成銀</th><td>800両</td></tr><tr><th>角</th><td>1,000両</td></tr>
+<tr><th>馬</th><td>1,300両</td></tr><tr><th>飛車</th><td>1,600両</td></tr>
+<tr><th>龍</th><td>2,000両</td></tr><tr><th>王</th><td>2,500両</td></tr>
+</tbody></table>
+<p><b>一周：</b>＋50両</p>
+<p><b>戦争：</b>2人戦は1位が2位、3人戦は1位が3位、4人戦は1位が4位・2位が3位から、それぞれ所持俸禄の半分を獲得します。</p>
+<p>俸禄は勝敗条件ではなく、ゲームごとに0両から始まります。</p></div>
       </details>
 
       <details>
@@ -122,7 +143,9 @@
     </div>
   </div>
 
+
+</section>
 </main>
-<script src="game.js?v=129"></script>
+<script src="game.js?v=131"></script>
 </body>
 </html>

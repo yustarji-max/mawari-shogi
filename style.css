@@ -1027,3 +1027,87 @@ body.title-mode #startButton{
 body.title-mode #gameApp{
   background:#090806!important;
 }
+
+/* ===== v1.0.38 金の見た目：塗り分けをやめ、影だけで立体感 ===== */
+.gold{
+  background:#ead2a0!important;
+  border:1px solid rgba(82,57,28,.72)!important;
+  box-shadow:0 4px 7px rgba(37,25,13,.28)!important;
+}
+.gold::before{
+  content:none!important;
+  display:none!important;
+}
+
+/* 横立ち5：真上からは横長の「厚み」が見える */
+.gold.side{
+  width:60px!important;
+  height:11px!important;
+  clip-path:none!important;
+  -webkit-clip-path:none!important;
+  border-radius:3px!important;
+  background:#ead2a0!important;
+  border:1px solid rgba(82,57,28,.72)!important;
+  box-shadow:0 6px 8px rgba(37,25,13,.30)!important;
+  color:transparent!important;
+  font-size:0!important;
+  overflow:visible!important;
+}
+.gold.side::after{
+  content:"横"!important;
+  display:block!important;
+  position:absolute!important;
+  left:50%!important;
+  top:18px!important;
+  transform:translateX(-50%)!important;
+  width:auto!important;
+  height:auto!important;
+  padding:1px 5px!important;
+  background:rgba(48,39,28,.78)!important;
+  color:#f3e7cf!important;
+  border:0!important;
+  border-radius:999px!important;
+  box-shadow:none!important;
+  font:700 10px/1.35 -apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif!important;
+  white-space:nowrap!important;
+}
+
+/* 縦立ち10：真上からは縦長の「厚み」が見える */
+.gold.vertical{
+  width:11px!important;
+  height:60px!important;
+  clip-path:none!important;
+  -webkit-clip-path:none!important;
+  border-radius:3px!important;
+  background:#ead2a0!important;
+  border:1px solid rgba(82,57,28,.72)!important;
+  box-shadow:6px 3px 8px rgba(37,25,13,.30)!important;
+  color:transparent!important;
+  font-size:0!important;
+  overflow:visible!important;
+}
+.gold.vertical::after{
+  content:"縦"!important;
+  display:block!important;
+  position:absolute!important;
+  left:18px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  width:auto!important;
+  height:auto!important;
+  padding:1px 5px!important;
+  background:rgba(48,39,28,.78)!important;
+  color:#f3e7cf!important;
+  border:0!important;
+  border-radius:999px!important;
+  box-shadow:none!important;
+  font:700 10px/1.35 -apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif!important;
+  white-space:nowrap!important;
+}
+
+/* 回転中も本体の色は変えず、影だけ少し離す */
+.gold.spinning,
+.gold.dragging,
+.gold.active{
+  box-shadow:0 8px 12px rgba(37,25,13,.28)!important;
+}

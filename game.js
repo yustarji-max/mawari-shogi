@@ -33,10 +33,8 @@ const recordsClose=document.querySelector('#recordsClose');
 const recordsContent=document.querySelector('#recordsContent');
 const titleScreen=document.querySelector('#titleScreen');
 const gameApp=document.querySelector('#gameApp');
-const titleStartButton=document.querySelector('#titleStartButton');
 const titleRulesButton=document.querySelector('#titleRulesButton');
 const titleRecordsButton=document.querySelector('#titleRecordsButton');
-const setupBackButton=document.querySelector('#setupBackButton');
 const playNav=document.querySelector('#playNav');
 const playBackButton=document.querySelector('#playBackButton');
 const playRulesButton=document.querySelector('#playRulesButton');
@@ -662,7 +660,20 @@ function goldRoll(tier=0){
 function totalGold(golds){return golds.reduce((sum,g)=>sum+g.value,0);}
 function setupGolds(){roller.querySelectorAll('.gold').forEach(el=>el.remove());const cx=roller.clientWidth/2,cy=roller.clientHeight/2;for(let i=0;i<4;i++){const el=document.createElement('div');el.className='gold';el.textContent='金';const a=i*Math.PI/2;el.style.left=`${cx+Math.cos(a)*42}px`;el.style.top=`${cy+Math.sin(a)*34}px`;roller.appendChild(el);}}
 function spinGolds(angle){const list=[...roller.querySelectorAll('.gold')],cx=roller.clientWidth/2,cy=roller.clientHeight/2;list.forEach((el,i)=>{const a=angle+i*Math.PI/2;el.style.left=`${cx+Math.cos(a)*45}px`;el.style.top=`${cy+Math.sin(a)*35}px`;el.style.setProperty('--grot',`${angle*180/Math.PI+i*30}deg`);});}
-async function settleGolds(golds){await sleep(140);whoosh();const els=[...roller.querySelectorAll('.gold')];els.forEach((el,i)=>{const g=golds[i];el.className=`gold ${g.type==='side'?'side':g.type==='vertical'?'vertical':''}`;el.textContent=g.type==='back'?'':g.type==='face'?'金':g.label;el.style.left=`${22+i*19}%`;el.style.top='54%';el.style.setProperty('--grot',`${Math.random()*30-15}deg`);});await sleep(560);thud();await sleep(60);}
+async function settleGolds(golds){
+  await sleep(140);whoosh();
+  const els=[...roller.querySelectorAll('.gold')];
+  els.forEach((el,i)=>{
+    const g=golds[i];
+    el.className=`gold ${g.type==='side'?'side':g.type==='vertical'?'vertical':''}`;
+    el.textContent=g.type==='back'?'':g.type==='face'?'金':'';
+    el.setAttribute('aria-label',g.type==='side'?'横立ち 5':g.type==='vertical'?'縦立ち 10':g.type==='face'?'表 1':'裏 0');
+    el.style.left=`${22+i*19}%`;
+    el.style.top='54%';
+    el.style.setProperty('--grot',`${Math.random()*18-9}deg`);
+  });
+  await sleep(560);thud();await sleep(60);
+}
 
 function promote(playerIndex,delta){const p=players[playerIndex];p.rank=clamp(p.rank+delta,0,12);p.pendingKing=p.rank===12;}
 async function showRankChange(playerIndex,delta,label){
@@ -1083,21 +1094,16 @@ async function orderPlayers(){let candidates=[0,1,2,3];while(true){const scored=
 
 function setView(mode){
   document.body.classList.remove('title-mode','setup-mode','play-mode');
-  document.body.classList.add(mode+'-mode');
+  document.body.classList.add(mode==='play'?'play-mode':'title-mode');
 
-  if(mode==='title'){
-    titleScreen.hidden=false;
-    gameApp.hidden=true;
-    playNav.hidden=true;
-  }else if(mode==='setup'){
+  if(mode==='play'){
     titleScreen.hidden=true;
-    gameApp.hidden=false;
-    playNav.hidden=true;
-  }else{
-    titleScreen.hidden=true;
-    gameApp.hidden=false;
     playNav.hidden=false;
+  }else{
+    titleScreen.hidden=false;
+    playNav.hidden=true;
   }
+  gameApp.hidden=false;
   window.scrollTo(0,0);
 }
 function goTitle(){
@@ -1126,16 +1132,8 @@ function closeRules(){
 recordsButton.addEventListener('click',()=>{renderRecords();recordsModal.classList.add('show');recordsModal.setAttribute('aria-hidden','false');document.body.classList.add('rules-open');});
 recordsClose.addEventListener('click',()=>{recordsModal.classList.remove('show');recordsModal.setAttribute('aria-hidden','true');document.body.classList.remove('rules-open');});
 recordsModal.addEventListener('click',e=>{if(e.target===recordsModal)recordsClose.click();});
-titleStartButton.addEventListener('click',()=>setView('setup'));
-titleRulesButton.addEventListener('click',()=>{
-  setView('setup');
-  openRules();
-});
-titleRecordsButton.addEventListener('click',()=>{
-  setView('setup');
-  recordsButton.click();
-});
-setupBackButton.addEventListener('click',()=>setView('title'));
+titleRulesButton.addEventListener('click',openRules);
+titleRecordsButton.addEventListener('click',()=>recordsButton.click());
 playBackButton.addEventListener('click',goTitle);
 playRulesButton.addEventListener('click',openRules);
 playRecordsButton.addEventListener('click',()=>recordsButton.click());

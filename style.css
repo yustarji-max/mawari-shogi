@@ -674,3 +674,205 @@ body.play-mode .you{
   body.play-mode #board{max-height:48svh}
   body.play-mode .roller{flex-basis:76px;height:76px}
 }
+
+/* ===== v1.0.35 : true 2-screen layout ===== */
+body.title-mode{
+  overflow:auto!important;
+  background:#090806;
+}
+body.title-mode #gameApp > #appHeader,
+body.title-mode #gameApp > #gameCard,
+body.title-mode #gameApp > #playersCard,
+body.title-mode #gameApp > #logCard,
+body.title-mode #gameApp > #playNav{
+  display:none!important;
+}
+body.play-mode #titleScreen{
+  display:none!important;
+}
+body.play-mode #appHeader,
+body.play-mode #logCard{
+  display:none!important;
+}
+
+/* Title page: art + player selection on one page */
+.title-screen{
+  min-height:100svh;
+  height:auto!important;
+  overflow:visible!important;
+  padding-bottom:max(16px,env(safe-area-inset-bottom));
+}
+.title-art{
+  height:min(53svh,560px)!important;
+  flex:none!important;
+}
+.title-setup-wrap{
+  width:min(calc(100% - 24px),480px);
+  margin:8px auto 0;
+}
+.title-setup-card{
+  background:#15120e;
+  border:1px solid rgba(188,150,78,.42);
+  border-radius:14px;
+  padding:10px;
+  box-shadow:0 8px 24px #0007;
+  color:#eadfca;
+}
+.title-setup-label{
+  text-align:center;
+  margin:0 0 8px;
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:.08em;
+  color:#d9bc79;
+}
+.title-setup-card .setup-row{
+  gap:7px;
+  align-items:center;
+}
+.title-setup-card label{
+  color:#eadfca;
+}
+.title-setup-card select,
+.title-setup-card input{
+  background:#f4ead6;
+  color:#332719;
+  border-color:#8b7048;
+}
+.title-setup-card .name-grid{
+  margin:8px 0;
+  gap:6px;
+}
+.title-setup-card #startButton{
+  width:100%;
+  margin-top:5px;
+  padding:12px;
+  border:1px solid #b79144;
+  border-radius:12px;
+  background:linear-gradient(#dfbd68,#b98a30);
+  color:#20160a;
+  font-size:17px;
+  font-weight:900;
+  box-shadow:0 4px 12px #0007;
+}
+.title-setup-card #randomNames{
+  font-size:11px;
+  padding:6px 8px;
+}
+.title-sub-actions{
+  margin-top:7px!important;
+  padding-bottom:0!important;
+}
+
+/* Play: preserve one-screen goal but give the gold area back its importance */
+body.play-mode{
+  overflow:hidden!important;
+}
+body.play-mode #gameApp{
+  height:100svh;
+  overflow:hidden;
+}
+body.play-mode #gameCard{
+  min-height:0;
+}
+body.play-mode .board-row{
+  max-height:min(47svh,500px)!important;
+}
+body.play-mode #board{
+  max-height:47svh!important;
+}
+body.play-mode .roller{
+  flex:0 0 clamp(118px,16svh,144px)!important;
+  height:clamp(118px,16svh,144px)!important;
+  min-height:118px;
+}
+body.play-mode .gold{
+  width:45px;
+  height:53px;
+}
+body.play-mode .players{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+}
+
+/* ===== 金の立ち姿 =====
+   表/裏は通常の平置き。
+   横立ち・縦立ちは文字を回さず、木駒の側面と少し見える表面で表現。 */
+.gold.side,
+.gold.vertical{
+  clip-path:none!important;
+  -webkit-clip-path:none!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  overflow:visible;
+  color:transparent!important;
+  font-size:0!important;
+}
+.gold.side{
+  width:62px!important;
+  height:28px!important;
+}
+.gold.side::before{
+  content:""!important;
+  position:absolute;
+  left:3px;right:3px;bottom:3px;
+  height:12px;
+  display:block!important;
+  background:linear-gradient(180deg,#d0a266,#a9793f)!important;
+  border:1px solid #6a491f!important;
+  border-radius:3px!important;
+  box-shadow:0 5px 7px rgba(48,31,14,.28)!important;
+}
+.gold.side::after{
+  content:""!important;
+  position:absolute;
+  left:8px;right:8px;top:2px;
+  height:15px;
+  display:block!important;
+  background:linear-gradient(180deg,#f1ddb2,#d9b77c)!important;
+  border:1px solid #785325!important;
+  clip-path:polygon(8% 100%,17% 0,83% 0,92% 100%)!important;
+  -webkit-clip-path:polygon(8% 100%,17% 0,83% 0,92% 100%)!important;
+  transform:perspective(70px) rotateX(48deg);
+  transform-origin:bottom center;
+  box-shadow:none!important;
+}
+.gold.vertical{
+  width:28px!important;
+  height:62px!important;
+}
+.gold.vertical::before{
+  content:""!important;
+  position:absolute;
+  top:3px;bottom:3px;right:3px;
+  width:12px;
+  display:block!important;
+  background:linear-gradient(90deg,#a9793f,#d0a266)!important;
+  border:1px solid #6a491f!important;
+  border-radius:3px!important;
+  box-shadow:5px 2px 7px rgba(48,31,14,.28)!important;
+}
+.gold.vertical::after{
+  content:""!important;
+  position:absolute;
+  top:8px;bottom:8px;left:2px;
+  width:15px;
+  display:block!important;
+  background:linear-gradient(90deg,#f1ddb2,#d9b77c)!important;
+  border:1px solid #785325!important;
+  clip-path:polygon(100% 8%,100% 92%,0 83%,0 17%)!important;
+  -webkit-clip-path:polygon(100% 8%,100% 92%,0 83%,0 17%)!important;
+  transform:perspective(70px) rotateY(48deg);
+  transform-origin:center right;
+  box-shadow:none!important;
+}
+
+@media(max-height:760px){
+  .title-art{height:min(46svh,470px)!important}
+  body.play-mode .board-row{max-height:43svh!important}
+  body.play-mode #board{max-height:43svh!important}
+  body.play-mode .roller{
+    flex-basis:118px!important;
+    height:118px!important;
+  }
+}

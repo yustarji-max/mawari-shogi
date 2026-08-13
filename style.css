@@ -974,3 +974,56 @@ body.title-mode{
     padding:6px!important;
   }
 }
+
+/* ===== v1.0.37 : title lower area integrated with artwork ===== */
+body.title-mode,
+body.title-mode #titleScreen,
+body.title-mode .title-setup-wrap{
+  background:#090806!important;
+  color:#eadfca!important;
+}
+body.title-mode #titleScreen{
+  box-shadow:none!important;
+}
+body.title-mode .title-setup-card{
+  background:linear-gradient(180deg,#17130e,#0f0d0a)!important;
+  border:1px solid rgba(190,150,76,.42)!important;
+  box-shadow:0 10px 26px rgba(0,0,0,.42)!important;
+}
+body.title-mode .title-setup-label{
+  color:#d8b768!important;
+}
+body.title-mode .name-card{
+  background:#201a12!important;
+  border:1px solid rgba(176,137,68,.30)!important;
+  color:#e8d9bb!important;
+  box-shadow:none!important;
+}
+body.title-mode .name-card label{
+  color:#cdb98f!important;
+}
+body.title-mode .name-card input,
+body.title-mode .title-setup-card select{
+  background:#ede0c4!important;
+  color:#2d2418!important;
+  border:1px solid #8c7041!important;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.10)!important;
+}
+body.title-mode #randomNames{
+  background:transparent!important;
+  color:#cdb98f!important;
+  border:1px solid rgba(176,137,68,.35)!important;
+}
+body.title-mode .title-sub-actions button{
+  background:#15110d!important;
+  color:#dfcda9!important;
+  border:1px solid rgba(176,137,68,.42)!important;
+}
+body.title-mode #startButton{
+  background:linear-gradient(180deg,#e1bf69,#b9882e)!important;
+  color:#211608!important;
+  border:1px solid #e1c178!important;
+}
+body.title-mode #gameApp{
+  background:#090806!important;
+}

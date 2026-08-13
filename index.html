@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>まわり将棋 v1.0.34</title>
-  <link rel="stylesheet" href="style.css?v=134">
+  <title>まわり将棋 v1.0.35</title>
+  <link rel="stylesheet" href="style.css?v=135">
 </head>
 <body>
 
@@ -12,34 +12,11 @@
   <div class="title-art">
     <img src="assets/title-hero.png" alt="まわり将棋 戦争（仮）">
   </div>
-  <div class="title-actions">
-    <button id="titleStartButton" class="title-main-button" type="button">ゲーム開始</button>
-    <div class="title-sub-actions">
-      <button id="titleRulesButton" type="button">ルール</button>
-      <button id="titleRecordsButton" type="button">記録</button>
-    </div>
-  </div>
-</section>
-
-<main id="gameApp" class="app" hidden>
-  <header id="appHeader" class="app-header">
-    <div>
-      <h1>まわり将棋</h1>
-      <p class="sub">v1.0.34</p>
-    </div>
-    <div class="header-actions">
-<button id="recordsButton" class="rules-button" type="button">記録</button>
-<button id="rulesButton" class="rules-button" type="button">ルール</button>
-</div>
-  </header>
-
-  <section id="setup" class="card setup-screen-card">
-      <div class="setup-screen-head">
-        <button id="setupBackButton" class="plain-back-button" type="button">← タイトル</button>
-        <h2>対戦設定</h2>
-        <span></span>
-      </div>
-    <div class="setup-row">
+  
+  <div class="title-setup-wrap">
+    <section id="setup" class="title-setup-card">
+      <div class="title-setup-label">プレイヤー設定</div>
+<div class="setup-row">
       <label for="humanCount">遊ぶ人数</label>
       <select id="humanCount">
         <option value="1">1人</option><option value="2">2人</option>
@@ -50,6 +27,26 @@
     <div id="nameGrid" class="name-grid"></div>
     <button id="startButton">ゲーム開始</button>
   </section>
+    <div class="title-sub-actions">
+      <button id="titleRulesButton" type="button">ルール</button>
+      <button id="titleRecordsButton" type="button">記録</button>
+    </div>
+  </div>
+</section>
+
+<main id="gameApp" class="app">
+  <header id="appHeader" class="app-header">
+    <div>
+      <h1>まわり将棋</h1>
+      <p class="sub">v1.0.35</p>
+    </div>
+    <div class="header-actions">
+<button id="recordsButton" class="rules-button" type="button">記録</button>
+<button id="rulesButton" class="rules-button" type="button">ルール</button>
+</div>
+  </header>
+
+  
 
   <div id="playNav" class="play-nav" hidden>
       <button id="playBackButton" class="plain-back-button" type="button">← タイトル</button>
@@ -161,6 +158,6 @@
   </div>
 
 </main>
-<script src="game.js?v=134"></script>
+<script src="game.js?v=135"></script>
 </body>
 </html>

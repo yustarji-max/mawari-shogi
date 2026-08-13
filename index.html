@@ -3,15 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>まわり将棋 v1.0.32</title>
-  <link rel="stylesheet" href="style.css?v=132">
+  <title>まわり将棋 v1.0.34</title>
+  <link rel="stylesheet" href="style.css?v=134">
 </head>
 <body>
-<main class="app">
-  <div id="gameNav" class="game-nav" hidden><button id="backToStartButton" class="back-start-button" type="button">← スタート画面</button></div><header class="app-header">
+
+<section id="titleScreen" class="title-screen">
+  <div class="title-art">
+    <img src="assets/title-hero.png" alt="まわり将棋 戦争（仮）">
+  </div>
+  <div class="title-actions">
+    <button id="titleStartButton" class="title-main-button" type="button">ゲーム開始</button>
+    <div class="title-sub-actions">
+      <button id="titleRulesButton" type="button">ルール</button>
+      <button id="titleRecordsButton" type="button">記録</button>
+    </div>
+  </div>
+</section>
+
+<main id="gameApp" class="app" hidden>
+  <header id="appHeader" class="app-header">
     <div>
       <h1>まわり将棋</h1>
-      <p class="sub">v1.0.32 — スタート画面修正版</p>
+      <p class="sub">v1.0.34</p>
     </div>
     <div class="header-actions">
 <button id="recordsButton" class="rules-button" type="button">記録</button>
@@ -19,7 +33,12 @@
 </div>
   </header>
 
-  <section id="setup" class="card start-only">
+  <section id="setup" class="card setup-screen-card">
+      <div class="setup-screen-head">
+        <button id="setupBackButton" class="plain-back-button" type="button">← タイトル</button>
+        <h2>対戦設定</h2>
+        <span></span>
+      </div>
     <div class="setup-row">
       <label for="humanCount">遊ぶ人数</label>
       <select id="humanCount">
@@ -32,7 +51,14 @@
     <button id="startButton">ゲーム開始</button>
   </section>
 
-  <section class="card game-card">
+  <div id="playNav" class="play-nav" hidden>
+      <button id="playBackButton" class="plain-back-button" type="button">← タイトル</button>
+      <div class="play-actions">
+        <button id="playRulesButton" class="mini-action" type="button">ルール</button>
+        <button id="playRecordsButton" class="mini-action" type="button">記録</button>
+      </div>
+    </div>
+    <section id="gameCard" class="card game-card">
     <div class="board-row">
       <div class="board-column">
         <div id="board" aria-label="9×9の将棋盤">
@@ -66,8 +92,8 @@
     <div id="result" class="result"></div>
   </section>
 
-  <section class="card"><div id="players" class="players"></div></section>
-  <section class="card"><div id="log" class="log"></div></section>
+  <section id="playersCard" class="card"><div id="players" class="players"></div></section>
+  <section id="logCard" class="card"><div id="log" class="log"></div></section>
 
   <div id="rulesModal" class="rules-modal" aria-hidden="true">
     <div class="rules-panel" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
@@ -135,6 +161,6 @@
   </div>
 
 </main>
-<script src="game.js?v=132"></script>
+<script src="game.js?v=134"></script>
 </body>
 </html>

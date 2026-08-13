@@ -1111,3 +1111,31 @@ body.title-mode #gameApp{
 .gold.active{
   box-shadow:0 8px 12px rgba(37,25,13,.28)!important;
 }
+
+/* ===== v1.0.39 : iPhone input zoom prevention + visible version ===== */
+.title-setup-card input,
+.title-setup-card select,
+#setup input,
+#setup select{
+  font-size:16px!important;
+}
+.version-badge{
+  position:fixed;
+  right:7px;
+  z-index:80;
+  font:600 9px/1 -apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
+  letter-spacing:.04em;
+  opacity:.42;
+  pointer-events:none;
+  user-select:none;
+}
+.title-version{
+  top:max(7px,env(safe-area-inset-top));
+  color:#eadfca;
+}
+.game-version{
+  top:max(5px,env(safe-area-inset-top));
+  color:#51493f;
+}
+body.title-mode .game-version{display:none}
+body.play-mode .title-version{display:none}

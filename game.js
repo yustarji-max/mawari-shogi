@@ -1092,6 +1092,20 @@ function prepareNames(){
 async function orderPlayers(){let candidates=[0,1,2,3];while(true){const scored=candidates.map(i=>[i,totalGold(goldRoll())]);scored.forEach(([i,s])=>log(`順番決め：${players[i].name} = ${s}`));const max=Math.max(...scored.map(x=>x[1])),top=scored.filter(x=>x[1]===max).map(x=>x[0]);if(top.length===1){const firstSeat=players[top[0]].seat;players.sort((a,b)=>((a.seat-firstSeat+4)%4)-((b.seat-firstSeat+4)%4));turnIndex=0;await showEvent('先攻',`<b style="color:${players[0].color}">${players[0].name}</b><br>ここから右回り`,800);return;}candidates=top;log('1位同点。振り直し');}}
 
 
+
+function normalizeViewportBeforePlay(){
+  try{
+    const active=document.activeElement;
+    if(active && typeof active.blur==='function') active.blur();
+  }catch(_){}
+  // iPhone Safari may keep the focused-input scroll/zoom position for a moment.
+  requestAnimationFrame(()=>{
+    window.scrollTo(0,0);
+    setTimeout(()=>window.scrollTo(0,0),120);
+    setTimeout(()=>window.scrollTo(0,0),320);
+  });
+}
+
 function setView(mode){
   document.body.classList.remove('title-mode','setup-mode','play-mode');
   document.body.classList.add(mode==='play'?'play-mode':'title-mode');
@@ -1147,7 +1161,7 @@ document.addEventListener('keydown',event=>{
 });
 
 document.querySelector('#randomNames').addEventListener('click',randomNames);
-document.querySelector('#startButton').addEventListener('click',async()=>{setView('play');cancelCpuRoll();await ensureAudio();const humans=Number(document.querySelector('#humanCount').value);players=[0,1,2,3].map(i=>{
+document.querySelector('#startButton').addEventListener('click',async()=>{normalizeViewportBeforePlay();setView('play');cancelCpuRoll();await ensureAudio();const humans=Number(document.querySelector('#humanCount').value);players=[0,1,2,3].map(i=>{
   const name=document.querySelector(`#name${i}`).value||NAME_POOL[i];
   const cpu=i>=humans;
   return {name,seat:i,pos:CORNERS[i],rank:0,color:COLORS[i],sleeve:SLEEVES[i],cpu,isYou:i===0,

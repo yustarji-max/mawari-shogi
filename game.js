@@ -31,8 +31,16 @@ const recordsButton=document.querySelector('#recordsButton');
 const recordsModal=document.querySelector('#recordsModal');
 const recordsClose=document.querySelector('#recordsClose');
 const recordsContent=document.querySelector('#recordsContent');
-const gameNav=document.querySelector('#gameNav');
-const backToStartButton=document.querySelector('#backToStartButton');
+const titleScreen=document.querySelector('#titleScreen');
+const gameApp=document.querySelector('#gameApp');
+const titleStartButton=document.querySelector('#titleStartButton');
+const titleRulesButton=document.querySelector('#titleRulesButton');
+const titleRecordsButton=document.querySelector('#titleRecordsButton');
+const setupBackButton=document.querySelector('#setupBackButton');
+const playNav=document.querySelector('#playNav');
+const playBackButton=document.querySelector('#playBackButton');
+const playRulesButton=document.querySelector('#playRulesButton');
+const playRecordsButton=document.querySelector('#playRecordsButton');
 
 
 
@@ -1073,21 +1081,37 @@ function prepareNames(){
 async function orderPlayers(){let candidates=[0,1,2,3];while(true){const scored=candidates.map(i=>[i,totalGold(goldRoll())]);scored.forEach(([i,s])=>log(`順番決め：${players[i].name} = ${s}`));const max=Math.max(...scored.map(x=>x[1])),top=scored.filter(x=>x[1]===max).map(x=>x[0]);if(top.length===1){const firstSeat=players[top[0]].seat;players.sort((a,b)=>((a.seat-firstSeat+4)%4)-((b.seat-firstSeat+4)%4));turnIndex=0;await showEvent('先攻',`<b style="color:${players[0].color}">${players[0].name}</b><br>ここから右回り`,800);return;}candidates=top;log('1位同点。振り直し');}}
 
 
-function enterGameView(){
-  document.body.classList.add('game-mode');
-  gameNav.hidden=false;
+function setView(mode){
+  document.body.classList.remove('title-mode','setup-mode','play-mode');
+  document.body.classList.add(mode+'-mode');
+
+  if(mode==='title'){
+    titleScreen.hidden=false;
+    gameApp.hidden=true;
+    playNav.hidden=true;
+  }else if(mode==='setup'){
+    titleScreen.hidden=true;
+    gameApp.hidden=false;
+    playNav.hidden=true;
+  }else{
+    titleScreen.hidden=true;
+    gameApp.hidden=false;
+    playNav.hidden=false;
+  }
   window.scrollTo(0,0);
 }
-function returnToStartView(){
+function goTitle(){
   if(running){
-    const ok=window.confirm('ゲームを終了してスタート画面に戻りますか？\n途中終了の記録は保存されません。');
+    const ok=window.confirm('ゲームを終了してタイトルへ戻りますか？\n途中終了の記録は保存されません。');
     if(!ok)return;
-    running=false;busy=false;war=null;
+    cancelCpuRoll();
+    running=false;
+    busy=false;
+    war=null;
+    warShade.classList.remove('show');
     try{stopEnvironmentEngine();}catch(_){}
   }
-  document.body.classList.remove('game-mode');
-  gameNav.hidden=true;
-  window.scrollTo(0,0);
+  setView('title');
 }
 function openRules(){
   rulesModal.classList.add('show');
@@ -1102,7 +1126,19 @@ function closeRules(){
 recordsButton.addEventListener('click',()=>{renderRecords();recordsModal.classList.add('show');recordsModal.setAttribute('aria-hidden','false');document.body.classList.add('rules-open');});
 recordsClose.addEventListener('click',()=>{recordsModal.classList.remove('show');recordsModal.setAttribute('aria-hidden','true');document.body.classList.remove('rules-open');});
 recordsModal.addEventListener('click',e=>{if(e.target===recordsModal)recordsClose.click();});
-backToStartButton.addEventListener('click',returnToStartView);
+titleStartButton.addEventListener('click',()=>setView('setup'));
+titleRulesButton.addEventListener('click',()=>{
+  setView('setup');
+  openRules();
+});
+titleRecordsButton.addEventListener('click',()=>{
+  setView('setup');
+  recordsButton.click();
+});
+setupBackButton.addEventListener('click',()=>setView('title'));
+playBackButton.addEventListener('click',goTitle);
+playRulesButton.addEventListener('click',openRules);
+playRecordsButton.addEventListener('click',()=>recordsButton.click());
 rulesButton.addEventListener('click',openRules);
 rulesClose.addEventListener('click',closeRules);
 rulesModal.addEventListener('click',event=>{
@@ -1113,7 +1149,7 @@ document.addEventListener('keydown',event=>{
 });
 
 document.querySelector('#randomNames').addEventListener('click',randomNames);
-document.querySelector('#startButton').addEventListener('click',async()=>{cancelCpuRoll();await ensureAudio();const humans=Number(document.querySelector('#humanCount').value);players=[0,1,2,3].map(i=>{
+document.querySelector('#startButton').addEventListener('click',async()=>{setView('play');cancelCpuRoll();await ensureAudio();const humans=Number(document.querySelector('#humanCount').value);players=[0,1,2,3].map(i=>{
   const name=document.querySelector(`#name${i}`).value||NAME_POOL[i];
   const cpu=i>=humans;
   return {name,seat:i,pos:CORNERS[i],rank:0,color:COLORS[i],sleeve:SLEEVES[i],cpu,isYou:i===0,
@@ -1131,3 +1167,5 @@ window.addEventListener('unhandledrejection',e=>{const msg=e.reason?.message||St
 roller.addEventListener('touchmove',event=>{
   if(gesture.active)event.preventDefault();
 },{passive:false});
+
+setView('title');

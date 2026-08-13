@@ -439,11 +439,238 @@ body.rules-open{overflow:hidden}
 .houroku-table th{text-align:left;font-weight:700}.houroku-table td{text-align:right;font-weight:900;font-variant-numeric:tabular-nums}
 .rules-block h3{margin:14px 0 6px;font-size:16px}
 
-/* v1.0.32: DOMを移動せず表示だけ切り替える */
-body.game-mode .start-only{display:none!important}
-#gameNav[hidden]{display:none!important}
-.game-nav{display:flex;justify-content:flex-start;margin:0 0 6px}
-.back-start-button{appearance:none;border:1px solid rgba(83,63,38,.28);background:rgba(255,255,255,.48);border-radius:9px;padding:5px 8px;font:inherit;font-size:11px;color:inherit;opacity:.72}
-/* 金の面は均一、立体感は影のみ */
-.gold{background:#ecd9aa!important;border:1px solid rgba(88,61,30,.72)!important;box-shadow:0 2px 4px rgba(43,30,17,.24)!important}
-.gold::before,.gold::after{background:none!important;border:none!important;box-shadow:none!important}
+/* ===== v1.0.34 : title -> setup -> play ===== */
+[hidden]{display:none!important}
+
+body{
+  min-height:100svh;
+}
+body.title-mode{
+  overflow:hidden;
+  background:#090806;
+}
+body.setup-mode{
+  overflow:auto;
+}
+body.play-mode{
+  overflow:hidden;
+}
+
+/* Title */
+.title-screen{
+  min-height:100svh;
+  background:#090806;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+}
+.title-art{
+  width:min(100vw,520px);
+  height:min(72svh,760px);
+  overflow:hidden;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  background:#090806;
+}
+.title-art img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:top center;
+  display:block;
+}
+.title-actions{
+  width:min(calc(100% - 28px),480px);
+  margin-top:10px;
+  padding-bottom:max(14px,env(safe-area-inset-bottom));
+}
+.title-main-button{
+  width:100%;
+  padding:13px 12px;
+  border:1px solid #b79144;
+  border-radius:13px;
+  background:linear-gradient(#dfbd68,#b98a30);
+  color:#1f1609;
+  font-size:18px;
+  font-weight:900;
+  box-shadow:0 5px 16px #0008;
+}
+.title-sub-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:8px;
+}
+.title-sub-actions button{
+  border:1px solid #79623d;
+  background:#17140f;
+  color:#ead9b4;
+  padding:9px;
+}
+
+/* Setup stage */
+body.setup-mode #gameCard,
+body.setup-mode #playersCard,
+body.setup-mode #logCard,
+body.setup-mode #appHeader{
+  display:none!important;
+}
+body.setup-mode #gameApp{
+  display:block;
+  max-width:520px;
+  min-height:100svh;
+  padding:12px;
+}
+.setup-screen-card{
+  margin-top:5vh;
+}
+.setup-screen-head{
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  margin-bottom:10px;
+}
+.setup-screen-head h2{
+  margin:0;
+  font-size:20px;
+  text-align:center;
+}
+.plain-back-button{
+  justify-self:start;
+  width:auto;
+  padding:5px 7px;
+  background:transparent;
+  color:#51493f;
+  border:0;
+  font-size:11px;
+}
+body.setup-mode .setup-row{
+  justify-content:center;
+}
+body.setup-mode .name-grid{
+  margin:10px 0 12px;
+}
+
+/* Play stage */
+body.play-mode #setup,
+body.play-mode #appHeader,
+body.play-mode #logCard{
+  display:none!important;
+}
+body.play-mode #gameApp{
+  display:flex!important;
+  flex-direction:column;
+  width:100%;
+  max-width:760px;
+  height:100svh;
+  padding:3px 5px max(3px,env(safe-area-inset-bottom));
+  overflow:hidden;
+}
+.play-nav{
+  flex:0 0 auto;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  min-height:26px;
+  margin-bottom:2px;
+}
+.play-actions{
+  display:flex;
+  gap:5px;
+}
+.mini-action{
+  width:auto;
+  padding:4px 7px;
+  font-size:10px;
+  border-radius:8px;
+  background:#d8d0c4;
+  color:#413b34;
+}
+body.play-mode #gameCard{
+  flex:1 1 auto;
+  min-height:0;
+  margin:0;
+  padding:3px;
+  display:flex;
+  flex-direction:column;
+}
+body.play-mode .board-row{
+  flex:1 1 auto;
+  min-height:0;
+  max-height:min(52svh,520px);
+  width:min(100%,620px);
+}
+body.play-mode #board{
+  max-height:52svh;
+}
+body.play-mode .turn-box{
+  flex:0 0 auto;
+  margin:3px 0 2px;
+  padding:5px 7px;
+  font-size:15px;
+  border-width:2px;
+}
+body.play-mode .roller{
+  flex:0 0 88px;
+  height:88px;
+  border-radius:13px;
+}
+body.play-mode .gold{
+  width:39px;
+  height:46px;
+}
+body.play-mode .roll-button{
+  flex:0 0 auto;
+  margin-top:3px;
+  padding:7px;
+}
+body.play-mode .audio-button{
+  margin-top:2px;
+  padding:4px 7px;
+}
+body.play-mode .result{
+  min-height:0;
+  margin-top:2px;
+  font-size:12px;
+}
+body.play-mode #playersCard{
+  flex:0 0 auto;
+  margin:3px 0 0;
+  padding:3px;
+}
+body.play-mode .players{
+  grid-template-columns:repeat(4,1fr);
+  gap:3px;
+}
+body.play-mode .player-box{
+  padding:4px 3px;
+  font-size:10px;
+  line-height:1.25;
+  min-width:0;
+  overflow:hidden;
+}
+body.play-mode .you{
+  font-size:8px;
+  padding:1px 3px;
+}
+
+/* Existing gold visual: uniform face + natural shadow only */
+.gold{
+  background:#ecd9aa!important;
+  border:1px solid rgba(88,61,30,.72)!important;
+  box-shadow:0 2px 4px rgba(43,30,17,.24)!important;
+}
+.gold::before,.gold::after{
+  background:none!important;
+  border:none!important;
+  box-shadow:none!important;
+}
+
+@media(max-height:760px){
+  .title-art{height:68svh}
+  body.play-mode .board-row{max-height:48svh}
+  body.play-mode #board{max-height:48svh}
+  body.play-mode .roller{flex-basis:76px;height:76px}
+}

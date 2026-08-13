@@ -3,14 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>まわり将棋 v1.0.31</title>
-  <link rel="stylesheet" href="style.css?v=131">
+  <title>まわり将棋 v1.0.32</title>
+  <link rel="stylesheet" href="style.css?v=132">
 </head>
 <body>
 <main class="app">
-<section id="startScreen" class="screen start-screen">
-<div class="start-card"><div class="start-brand"><h1>まわり将棋</h1><div class="start-subtitle">戦争（仮）</div></div>
-<section id="setup" class="card">
+  <div id="gameNav" class="game-nav" hidden><button id="backToStartButton" class="back-start-button" type="button">← スタート画面</button></div><header class="app-header">
+    <div>
+      <h1>まわり将棋</h1>
+      <p class="sub">v1.0.32 — スタート画面修正版</p>
+    </div>
+    <div class="header-actions">
+<button id="recordsButton" class="rules-button" type="button">記録</button>
+<button id="rulesButton" class="rules-button" type="button">ルール</button>
+</div>
+  </header>
+
+  <section id="setup" class="card start-only">
     <div class="setup-row">
       <label for="humanCount">遊ぶ人数</label>
       <select id="humanCount">
@@ -22,24 +31,6 @@
     <div id="nameGrid" class="name-grid"></div>
     <button id="startButton">ゲーム開始</button>
   </section>
-<div class="start-links"><button id="startRecordsButton" class="quiet-button" type="button">記録</button><button id="startRulesButton" class="quiet-button" type="button">ルール</button></div>
-</div></section>
-<section id="gameScreen" class="screen game-screen" hidden>
-<div class="game-topbar"><button id="backToStartButton" class="back-start-button" type="button">← スタート画面</button>
-<div class="game-actions"><header class="app-header">
-    <div>
-      <h1>まわり将棋</h1>
-      <p class="sub">v1.0.31 — スタート画面・金デザイン修正版</p>
-    </div>
-    <div class="header-actions">
-<button id="recordsButton" class="rules-button" type="button">記録</button>
-<button id="rulesButton" class="rules-button" type="button">ルール</button>
-</div>
-  </header></div></div>
-
-  
-
-  
 
   <section class="card game-card">
     <div class="board-row">
@@ -143,9 +134,7 @@
     </div>
   </div>
 
-
-</section>
 </main>
-<script src="game.js?v=131"></script>
+<script src="game.js?v=132"></script>
 </body>
 </html>

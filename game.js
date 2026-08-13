@@ -31,8 +31,8 @@ const recordsButton=document.querySelector('#recordsButton');
 const recordsModal=document.querySelector('#recordsModal');
 const recordsClose=document.querySelector('#recordsClose');
 const recordsContent=document.querySelector('#recordsContent');
-const startScreen=document.querySelector('#startScreen'),gameScreen=document.querySelector('#gameScreen');
-const backToStartButton=document.querySelector('#backToStartButton'),startRecordsButton=document.querySelector('#startRecordsButton'),startRulesButton=document.querySelector('#startRulesButton');
+const gameNav=document.querySelector('#gameNav');
+const backToStartButton=document.querySelector('#backToStartButton');
 
 
 
@@ -1073,12 +1073,21 @@ function prepareNames(){
 async function orderPlayers(){let candidates=[0,1,2,3];while(true){const scored=candidates.map(i=>[i,totalGold(goldRoll())]);scored.forEach(([i,s])=>log(`順番決め：${players[i].name} = ${s}`));const max=Math.max(...scored.map(x=>x[1])),top=scored.filter(x=>x[1]===max).map(x=>x[0]);if(top.length===1){const firstSeat=players[top[0]].seat;players.sort((a,b)=>((a.seat-firstSeat+4)%4)-((b.seat-firstSeat+4)%4));turnIndex=0;await showEvent('先攻',`<b style="color:${players[0].color}">${players[0].name}</b><br>ここから右回り`,800);return;}candidates=top;log('1位同点。振り直し');}}
 
 
-function showStartScreen(){gameScreen.hidden=true;startScreen.hidden=false;window.scrollTo(0,0);}
-function showGameScreen(){startScreen.hidden=true;gameScreen.hidden=false;window.scrollTo(0,0);}
-function returnToStart(){
- if(running&&!window.confirm('ゲームを終了してスタート画面に戻りますか？\n途中終了の記録は保存されません。'))return;
- if(running){running=false;busy=false;war=null;stopEnvironmentEngine();}
- showStartScreen();
+function enterGameView(){
+  document.body.classList.add('game-mode');
+  gameNav.hidden=false;
+  window.scrollTo(0,0);
+}
+function returnToStartView(){
+  if(running){
+    const ok=window.confirm('ゲームを終了してスタート画面に戻りますか？\n途中終了の記録は保存されません。');
+    if(!ok)return;
+    running=false;busy=false;war=null;
+    try{stopEnvironmentEngine();}catch(_){}
+  }
+  document.body.classList.remove('game-mode');
+  gameNav.hidden=true;
+  window.scrollTo(0,0);
 }
 function openRules(){
   rulesModal.classList.add('show');
@@ -1091,11 +1100,9 @@ function closeRules(){
   document.body.classList.remove('rules-open');
 }
 recordsButton.addEventListener('click',()=>{renderRecords();recordsModal.classList.add('show');recordsModal.setAttribute('aria-hidden','false');document.body.classList.add('rules-open');});
-startRecordsButton.addEventListener('click',()=>recordsButton.click());
-startRulesButton.addEventListener('click',openRules);
-backToStartButton.addEventListener('click',returnToStart);
 recordsClose.addEventListener('click',()=>{recordsModal.classList.remove('show');recordsModal.setAttribute('aria-hidden','true');document.body.classList.remove('rules-open');});
 recordsModal.addEventListener('click',e=>{if(e.target===recordsModal)recordsClose.click();});
+backToStartButton.addEventListener('click',returnToStartView);
 rulesButton.addEventListener('click',openRules);
 rulesClose.addEventListener('click',closeRules);
 rulesModal.addEventListener('click',event=>{
@@ -1124,5 +1131,3 @@ window.addEventListener('unhandledrejection',e=>{const msg=e.reason?.message||St
 roller.addEventListener('touchmove',event=>{
   if(gesture.active)event.preventDefault();
 },{passive:false});
-
-showStartScreen();

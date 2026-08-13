@@ -439,12 +439,11 @@ body.rules-open{overflow:hidden}
 .houroku-table th{text-align:left;font-weight:700}.houroku-table td{text-align:right;font-weight:900;font-variant-numeric:tabular-nums}
 .rules-block h3{margin:14px 0 6px;font-size:16px}
 
-.screen[hidden]{display:none!important}.start-screen{min-height:calc(100svh - 24px);display:grid;place-items:center;padding:18px 12px}
-.start-card{width:min(100%,480px);margin:auto}.start-brand{text-align:center;margin:6px 0 20px}.start-brand h1{font-size:30px;letter-spacing:.08em;margin:0}
-.start-subtitle{font-size:12px;letter-spacing:.18em;margin-top:5px;opacity:.62}.start-links{display:flex;justify-content:center;gap:8px;margin-top:12px}
-.quiet-button,.back-start-button{appearance:none;border:1px solid rgba(83,63,38,.28);background:rgba(255,255,255,.48);border-radius:9px;padding:7px 11px;font:inherit;color:inherit}
-.quiet-button{font-size:12px}.game-topbar{display:flex;justify-content:space-between;align-items:center;margin:0 0 6px}.back-start-button{font-size:11px;padding:5px 8px;opacity:.72}
-.game-actions .app-header>div:first-child{display:none}.game-actions .app-header{padding:0;margin:0}.game-screen{width:100%}
+/* v1.0.32: DOMを移動せず表示だけ切り替える */
+body.game-mode .start-only{display:none!important}
+#gameNav[hidden]{display:none!important}
+.game-nav{display:flex;justify-content:flex-start;margin:0 0 6px}
+.back-start-button{appearance:none;border:1px solid rgba(83,63,38,.28);background:rgba(255,255,255,.48);border-radius:9px;padding:5px 8px;font:inherit;font-size:11px;color:inherit;opacity:.72}
+/* 金の面は均一、立体感は影のみ */
 .gold{background:#ecd9aa!important;border:1px solid rgba(88,61,30,.72)!important;box-shadow:0 2px 4px rgba(43,30,17,.24)!important}
 .gold::before,.gold::after{background:none!important;border:none!important;box-shadow:none!important}
-.gold.spinning,.gold.dragging,.gold.active{box-shadow:0 7px 11px rgba(43,30,17,.25)!important}

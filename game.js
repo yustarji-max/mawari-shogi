@@ -1106,6 +1106,18 @@ function normalizeViewportBeforePlay(){
   });
 }
 
+
+function ensurePlayHeaderVisible(){
+  if(!playNav)return;
+  playNav.hidden=false;
+  playNav.style.display='';
+  requestAnimationFrame(()=>{
+    playNav.hidden=false;
+    setTimeout(()=>{ playNav.hidden=false; },120);
+    setTimeout(()=>{ playNav.hidden=false; },350);
+  });
+}
+
 function setView(mode){
   document.body.classList.remove('title-mode','setup-mode','play-mode');
   document.body.classList.add(mode==='play'?'play-mode':'title-mode');
@@ -1113,6 +1125,7 @@ function setView(mode){
   if(mode==='play'){
     titleScreen.hidden=true;
     playNav.hidden=false;
+    ensurePlayHeaderVisible();
   }else{
     titleScreen.hidden=false;
     playNav.hidden=true;

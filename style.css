@@ -1561,3 +1561,159 @@ body.play-mode .board-wrap{
     min-width:64px!important;
   }
 }
+
+/* ===== v1.0.46 : actually widen promotion table ===== */
+body.play-mode .board-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 82px!important;
+  column-gap:7px!important;
+  width:100%!important;
+  max-width:100%!important;
+  align-items:stretch!important;
+  justify-content:center!important;
+}
+
+/* Board uses the remaining column and remains square */
+body.play-mode #board{
+  width:100%!important;
+  max-width:min(100%,48svh)!important;
+  aspect-ratio:1 / 1!important;
+  height:auto!important;
+  justify-self:end!important;
+}
+
+/* Promotion table: explicit 82px column controlled by parent */
+body.play-mode #rankTrack.rank-track{
+  width:82px!important;
+  min-width:82px!important;
+  max-width:82px!important;
+  box-sizing:border-box!important;
+  justify-self:start!important;
+  padding:4px 5px!important;
+}
+
+/* Dot and text have separate reserved columns */
+body.play-mode #rankTrack .rank-item{
+  display:grid!important;
+  grid-template-columns:12px minmax(0,1fr)!important;
+  column-gap:6px!important;
+  align-items:center!important;
+  width:100%!important;
+  box-sizing:border-box!important;
+  padding:2px 0!important;
+}
+body.play-mode #rankTrack .rank-dot{
+  width:10px!important;
+  height:10px!important;
+  min-width:10px!important;
+  margin:0!important;
+  justify-self:center!important;
+}
+body.play-mode #rankTrack .rank-label,
+body.play-mode #rankTrack .rank-item span{
+  min-width:0!important;
+  margin:0!important;
+  padding:0!important;
+  font-size:10px!important;
+  line-height:1.1!important;
+  white-space:nowrap!important;
+  text-align:left!important;
+  justify-self:start!important;
+}
+
+/* Short screens: keep table width; shrink board rather than table */
+@media(max-height:760px){
+  body.play-mode .board-row{
+    grid-template-columns:minmax(0,1fr) 78px!important;
+    column-gap:6px!important;
+  }
+  body.play-mode #rankTrack.rank-track{
+    width:78px!important;
+    min-width:78px!important;
+    max-width:78px!important;
+  }
+  body.play-mode #board{
+    max-width:min(100%,45svh)!important;
+  }
+}
+
+/* ===== v1.0.47 : stable game header + no gap to rank table ===== */
+
+/* ゲーム用ヘッダーはiPhoneのセーフエリア内で必ず見える */
+body.play-mode #gameApp{
+  padding-top:max(4px,env(safe-area-inset-top))!important;
+}
+body.play-mode #playNav{
+  display:grid!important;
+  grid-template-columns:auto 1fr auto!important;
+  align-items:center!important;
+  min-height:30px!important;
+  flex:0 0 30px!important;
+  width:100%!important;
+  margin:0 0 3px!important;
+  padding:0 2px!important;
+  box-sizing:border-box!important;
+  position:relative!important;
+  top:auto!important;
+  z-index:100!important;
+  background:rgba(238,233,224,.96)!important;
+}
+body.play-mode #playNav[hidden]{
+  display:none!important;
+}
+.play-header-title{
+  min-width:0;
+  text-align:center;
+  font-size:11px;
+  font-weight:800;
+  line-height:1;
+  color:#4b443b;
+  white-space:nowrap;
+}
+.play-header-title span{
+  margin-left:4px;
+  font-size:8px;
+  font-weight:600;
+  opacity:.48;
+}
+body.play-mode #playBackButton{
+  display:block!important;
+  visibility:visible!important;
+  opacity:.72!important;
+  white-space:nowrap!important;
+}
+body.play-mode .play-actions{
+  display:flex!important;
+  visibility:visible!important;
+  gap:4px!important;
+}
+
+/* 浮いているゲーム用version badgeは不要。ヘッダー内に表示 */
+body.play-mode .game-version{
+  display:none!important;
+}
+
+/* 盤と出世表の間の無駄な隙間を完全にゼロへ */
+body.play-mode .board-row{
+  column-gap:0!important;
+  gap:0!important;
+  grid-template-columns:minmax(0,1fr) 82px!important;
+}
+body.play-mode #rankTrack.rank-track{
+  margin-left:0!important;
+  border-left-width:0!important;
+}
+
+/* 出世表内にだけ必要な内側余白を確保 */
+body.play-mode #rankTrack.rank-track{
+  padding-left:6px!important;
+  padding-right:5px!important;
+}
+
+@media(max-height:760px){
+  body.play-mode .board-row{
+    column-gap:0!important;
+    gap:0!important;
+    grid-template-columns:minmax(0,1fr) 78px!important;
+  }
+}

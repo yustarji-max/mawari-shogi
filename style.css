@@ -1412,3 +1412,75 @@ body.play-mode .version-badge.game-version{
     padding-top:max(9px,calc(env(safe-area-inset-top) + 5px))!important;
   }
 }
+
+/* ===== v1.0.43 : board must always be a true square ===== */
+body.play-mode .board-row{
+  width:100%!important;
+  height:auto!important;
+  max-height:none!important;
+  min-height:0!important;
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+}
+
+/* width and height are always tied together; never squeeze only one axis */
+body.play-mode #board{
+  box-sizing:border-box!important;
+  width:min(100%,43svh)!important;
+  height:auto!important;
+  max-width:100%!important;
+  max-height:none!important;
+  aspect-ratio:1 / 1!important;
+  flex:0 0 auto!important;
+}
+
+/* Keep every 9x9 cell square as an extra guard */
+body.play-mode #board .cell{
+  aspect-ratio:1 / 1!important;
+}
+
+/* Short screens: shrink the whole square, never flatten it */
+@media(max-height:760px){
+  body.play-mode #board{
+    width:min(100%,40svh)!important;
+    height:auto!important;
+    max-height:none!important;
+    aspect-ratio:1 / 1!important;
+  }
+  body.play-mode .board-row{
+    max-height:none!important;
+  }
+}
+
+/* ===== v1.0.44 : 金の影を状態ごとに明確化 ===== */
+
+/* 表・裏：盤に寝ているので、影は近く・薄く */
+.gold:not(.side):not(.vertical){
+  background:#ead2a0!important;
+  background-image:none!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  filter:drop-shadow(0 2px 2px rgba(37,25,13,.20))!important;
+}
+
+/* 横立ち：接地面が小さいので、少し離れた影 */
+.gold.side{
+  box-shadow:none!important;
+  filter:drop-shadow(0 5px 4px rgba(37,25,13,.34))!important;
+}
+
+/* 縦立ち：同じく少し強め。縦方向の見え方に合わせて横へ少し逃がす */
+.gold.vertical{
+  box-shadow:none!important;
+  filter:drop-shadow(4px 3px 4px rgba(37,25,13,.34))!important;
+}
+
+/* 振っている最中はさらに浮く */
+.gold.spinning,
+.gold.dragging,
+.gold.active{
+  box-shadow:none!important;
+  filter:drop-shadow(0 8px 6px rgba(37,25,13,.30))!important;
+}

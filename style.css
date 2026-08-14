@@ -1312,3 +1312,103 @@ body.play-mode #result{
     max-height:190px!important;
   }
 }
+
+/* ===== v1.0.41 version badge collision fix ===== */
+/* 右上は「記録」等の操作領域なので、バージョンは左下へ逃がす */
+.version-badge{
+  right:auto!important;
+  top:auto!important;
+  left:7px!important;
+  bottom:max(5px,env(safe-area-inset-bottom))!important;
+  font-size:9px!important;
+  opacity:.38!important;
+  z-index:30!important;
+}
+.title-version{
+  color:#eadfca!important;
+}
+.game-version{
+  color:#51493f!important;
+}
+
+/* ===== v1.0.42 : breathing room + footer version + gold shadows ===== */
+
+/* タイトル画面：上端に呼吸できる余白を追加。画像は欠けさせない */
+body.title-mode .title-screen{
+  padding-top:max(12px,calc(env(safe-area-inset-top) + 8px))!important;
+  padding-bottom:max(24px,calc(env(safe-area-inset-bottom) + 14px))!important;
+}
+body.title-mode .title-art{
+  margin-top:4px!important;
+}
+
+/* バージョンは浮かせず、トップ画面下部の専用スペースに収める */
+body.title-mode .version-badge.title-version{
+  position:absolute!important;
+  left:0!important;
+  right:0!important;
+  top:auto!important;
+  bottom:max(6px,env(safe-area-inset-bottom))!important;
+  width:100%!important;
+  text-align:center!important;
+  opacity:.40!important;
+}
+body.title-mode #titleScreen{
+  position:relative!important;
+}
+
+/* ゲーム画面：上部のパツパツ感を少し解消。ただし盤/金エリアを削りすぎない */
+body.play-mode #gameApp{
+  box-sizing:border-box!important;
+  padding-top:max(8px,calc(env(safe-area-inset-top) + 4px))!important;
+  padding-bottom:max(12px,calc(env(safe-area-inset-bottom) + 5px))!important;
+}
+body.play-mode #gameCard{
+  margin-top:3px!important;
+}
+/* ゲーム中のバージョンは最下部の薄い専用帯 */
+body.play-mode .version-badge.game-version{
+  position:fixed!important;
+  left:0!important;
+  right:0!important;
+  top:auto!important;
+  bottom:max(2px,env(safe-area-inset-bottom))!important;
+  width:100%!important;
+  text-align:center!important;
+  opacity:.30!important;
+  z-index:20!important;
+}
+
+/* 平置きの表/裏にも自然な落ち影。木色は変えない */
+.gold:not(.side):not(.vertical){
+  background:#ead2a0!important;
+  background-image:none!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  filter:drop-shadow(0 4px 4px rgba(37,25,13,.28))!important;
+}
+/* 立ち駒は接地面が小さいので少しだけ影を強く */
+.gold.side{
+  filter:drop-shadow(0 5px 4px rgba(37,25,13,.32))!important;
+}
+.gold.vertical{
+  filter:drop-shadow(5px 2px 4px rgba(37,25,13,.32))!important;
+}
+/* 振っている途中は影を離して浮遊感 */
+.gold.spinning,
+.gold.dragging,
+.gold.active{
+  box-shadow:none!important;
+  filter:drop-shadow(0 8px 6px rgba(37,25,13,.30))!important;
+}
+
+/* 小さいiPhoneでも上余白を完全には潰さない */
+@media(max-height:760px){
+  body.play-mode #gameApp{
+    padding-top:max(6px,calc(env(safe-area-inset-top) + 2px))!important;
+  }
+  body.title-mode .title-screen{
+    padding-top:max(9px,calc(env(safe-area-inset-top) + 5px))!important;
+  }
+}

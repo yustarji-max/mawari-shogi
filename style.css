@@ -1484,3 +1484,80 @@ body.play-mode #board .cell{
   box-shadow:none!important;
   filter:drop-shadow(0 8px 6px rgba(37,25,13,.30))!important;
 }
+
+/* ===== v1.0.45 : board larger, roller slightly smaller, rank track readable ===== */
+
+/* 盤をもう一段大きく */
+body.play-mode .board-row{
+  width:100%!important;
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+}
+body.play-mode #board{
+  width:min(100%,48svh)!important;
+  aspect-ratio:1 / 1!important;
+  height:auto!important;
+}
+
+/* 金を振るスペースは少しだけ縮める */
+body.play-mode #roller{
+  flex:0 0 clamp(118px,13.5svh,142px)!important;
+  min-height:118px!important;
+  max-height:142px!important;
+  height:auto!important;
+}
+
+/* 出世表の幅を確保して、文字と色丸を分離 */
+body.play-mode .rank-track{
+  width:68px!important;
+  min-width:68px!important;
+  padding:3px 4px!important;
+  box-sizing:border-box!important;
+}
+body.play-mode .rank-item{
+  display:grid!important;
+  grid-template-columns:12px 1fr!important;
+  align-items:center!important;
+  column-gap:5px!important;
+  min-height:22px!important;
+  padding:2px 1px!important;
+  box-sizing:border-box!important;
+}
+body.play-mode .rank-dot{
+  width:10px!important;
+  height:10px!important;
+  min-width:10px!important;
+  border-radius:50%!important;
+  margin:0!important;
+  justify-self:center!important;
+}
+body.play-mode .rank-item span,
+body.play-mode .rank-label{
+  font-size:10px!important;
+  line-height:1.05!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+}
+
+/* 盤+出世表全体の高さ感を揃える */
+body.play-mode .board-shell,
+body.play-mode .board-wrap{
+  align-items:stretch!important;
+}
+
+/* 低い画面でも盤を正方形のまま優先 */
+@media(max-height:760px){
+  body.play-mode #board{
+    width:min(100%,45svh)!important;
+  }
+  body.play-mode #roller{
+    flex-basis:112px!important;
+    min-height:112px!important;
+    max-height:126px!important;
+  }
+  body.play-mode .rank-track{
+    width:64px!important;
+    min-width:64px!important;
+  }
+}

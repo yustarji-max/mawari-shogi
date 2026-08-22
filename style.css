@@ -1946,3 +1946,17 @@ body.play-mode #roller{
   body.play-mode #ladder .rank-row{font-size:6.5px!important}
   .anticipation{min-height:14px;font-size:9px}
 }
+
+.money-fx-layer{position:fixed;inset:0;z-index:180;pointer-events:none}
+.money-fx{position:fixed;left:50%;top:54%;transform:translate(-50%,-50%);padding:8px 12px;border-radius:12px;font-weight:900;text-align:center;opacity:0;animation:moneyFx .95s ease-out forwards;box-shadow:0 8px 24px #0005}
+.money-fx.gain{background:#f4e4b5;color:#5b4218;border:1px solid #af8539}
+.money-fx.loss{background:#3f3831;color:#f4e8d3;border:1px solid #7e6d5d}
+.money-fx.transfer{background:#211d18;color:#f0d7a1;border:1px solid #9c7539}
+.money-fx .sub{font-size:10px;opacity:.8;margin-top:2px}
+@keyframes moneyFx{0%{opacity:0;transform:translate(-50%,-42%) scale(.9)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.03)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-66%) scale(.98)}}
+.player-box{position:relative!important}
+.player-money-delta{position:absolute;right:4px;top:4px;padding:2px 5px;border-radius:999px;font-size:10px;font-weight:900;opacity:0;animation:pmd .95s ease-out forwards}
+.player-money-delta.plus{background:#f5e3ad;color:#654817;border:1px solid #bb9144}
+.player-money-delta.minus{background:#4a4239;color:#f3e7d2;border:1px solid #877563}
+@keyframes pmd{0%{opacity:0;transform:translateY(5px)}18%{opacity:1;transform:translateY(0)}75%{opacity:1}100%{opacity:0;transform:translateY(-7px)}}
+.money-coin-flight{position:fixed;z-index:190;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff0a8 0 12%,#d4a73f 35%,#8b6423 100%);border:1px solid #79551f;box-shadow:0 2px 5px #0005;pointer-events:none}

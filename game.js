@@ -21,6 +21,7 @@ const turnBox=document.querySelector('#turnBox');
 const rollButton=document.querySelector('#rollButton');
 const audioButton=document.querySelector('#audioButton');
 const resultEl=document.querySelector('#result');
+const moneyFxLayer=document.querySelector('#moneyFxLayer');
 const anticipationEl=document.querySelector('#anticipation');
 const battleGauge=document.querySelector('#battleGauge');
 const battleGaugeMarker=document.querySelector('#battleGaugeMarker');
@@ -150,6 +151,40 @@ function renderRecords(){
 
 function log(text){const el=document.createElement('div');el.textContent=text;logEl.appendChild(el);logEl.scrollTop=logEl.scrollHeight;}
 function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
+
+function moneyText(amount){return `${Number(amount||0).toLocaleString()}両`;}
+function playerBoxFor(index){return [...document.querySelectorAll('#players .player-box')][index]||null;}
+function showPlayerMoneyDelta(index,amount){
+  const box=playerBoxFor(index); if(!box||!amount)return;
+  box.querySelector('.player-money-delta')?.remove();
+  const el=document.createElement('div');
+  el.className=`player-money-delta ${amount>0?'plus':'minus'}`;
+  el.textContent=`${amount>0?'+':'−'}${moneyText(Math.abs(amount))}`;
+  box.appendChild(el); setTimeout(()=>el.remove(),1050);
+}
+function showMoneyFx(kind,main,sub=''){
+  if(!moneyFxLayer)return;
+  const el=document.createElement('div'); el.className=`money-fx ${kind}`;
+  el.innerHTML=`<div>${main}</div>${sub?`<div class="sub">${sub}</div>`:''}`;
+  moneyFxLayer.appendChild(el); setTimeout(()=>el.remove(),1050);
+}
+function showMoneyGain(index,amount,label){
+  showPlayerMoneyDelta(index,amount);
+  showMoneyFx('gain',`＋${moneyText(amount)}`,`${players[index].name}　${label}`);
+}
+function animateMoneyTransfer(fromIndex,toIndex,amount){
+  showPlayerMoneyDelta(fromIndex,-amount); showPlayerMoneyDelta(toIndex,amount);
+  showMoneyFx('transfer',`${players[fromIndex].name} → ${players[toIndex].name}`,`${moneyText(amount)} 移動`);
+  const from=playerBoxFor(fromIndex),to=playerBoxFor(toIndex); if(!from||!to||!moneyFxLayer)return;
+  const a=from.getBoundingClientRect(),b=to.getBoundingClientRect();
+  const sx=a.left+a.width/2,sy=a.top+a.height/2,tx=b.left+b.width/2,ty=b.top+b.height/2;
+  for(let i=0;i<5;i++){
+    const coin=document.createElement('div'); coin.className='money-coin-flight';
+    coin.style.left=`${sx}px`; coin.style.top=`${sy}px`; moneyFxLayer.appendChild(coin);
+    coin.animate([{left:`${sx}px`,top:`${sy}px`,opacity:0},{opacity:1,offset:.18},{left:`${(sx+tx)/2}px`,top:`${(sy+ty)/2-18}px`,opacity:1,offset:.56},{left:`${tx}px`,top:`${ty}px`,opacity:0}],{duration:620,delay:i*55,easing:'cubic-bezier(.2,.7,.2,1)',fill:'forwards'});
+    setTimeout(()=>coin.remove(),760+i*55);
+  }
+}
 
 function ringCoords(){
   const a=[];
@@ -751,9 +786,9 @@ async function moveNormal(playerIndex,steps){
       players[i].travelSteps=(players[i].travelSteps||0)+1;
       if(players[i].travelSteps%32===0){
         addMoney(i,LAP_BONUS,'一周');
+        const fire=()=>{showMoneyGain(i,LAP_BONUS,'一周ボーナス');lapMoneySound();};
         const landingOnCorner=isCorner(next) && i===playerIndex;
-        if(landingOnCorner)setTimeout(lapMoneySound,1050);
-        else lapMoneySound();
+        if(landingOnCorner)setTimeout(fire,1050); else fire();
       }
     });
     await showHand(next,playerIndex,true);
@@ -810,7 +845,7 @@ async function showRankChange(playerIndex,delta,label){
   promote(playerIndex,delta);
   const afterRank=p.rank,after=RANKS[p.rank];
   rankChangeSound(delta,playerIndex,beforeRank,afterRank);
-  if(afterRank>beforeRank)awardPromotion(playerIndex,beforeRank,afterRank,delta);
+  let promotionMoney=0;if(afterRank>beforeRank)promotionMoney=awardPromotion(playerIndex,beforeRank,afterRank,delta);if(promotionMoney>0)showMoneyGain(playerIndex,promotionMoney,'出世俸禄');
   await showEvent(label,`<div style="font-size:20px;font-weight:900;color:${p.color}">${p.name}<br>${before} → ${after}</div>`,760);
   log(`${p.name}：${before} → ${after}`);render();
 }
@@ -921,10 +956,12 @@ async function resolveWarRoll(value){
       const lost=moneyTransfers.find(t=>t.loser===playerIndex);
       if(gained){
         await sleep(90);
+        animateMoneyTransfer(gained.loser,gained.winner,gained.amount);
         warGainSound();
         await sleep(820);
       }else if(lost){
         await sleep(90);
+        showMoneyFx('loss',`−${moneyText(lost.amount)}`,`${players[lost.loser].name} → ${players[lost.winner].name}`);
         warLossSound();
         await sleep(600);
       }

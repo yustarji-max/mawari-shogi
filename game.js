@@ -116,8 +116,8 @@ function awardWarMoney(finish){
     if(got){
       players[w].gameWarWins=(players[w].gameWarWins||0)+1;
       log(`戦争俸禄：${players[w].name}が${players[l].name}から半分獲得`);
-      setTimeout(()=>warGainSound(),420);
-      setTimeout(()=>warLossSound(),1050);
+      setTimeout(()=>warGainSound(),520);
+      setTimeout(()=>warLossSound(),1250);
     }
   });
 }
@@ -195,12 +195,9 @@ const EFFECT_FILES={
   rankUp:['audio/rank_up.wav'],
   rankUpBig:['audio/rank_up_big.wav'],
   rankDown:['audio/rank_down.wav'],
-  rankDownBig:['audio/rank_down_big.wav'],
-  moneyLap:['audio/money_lap_v151.wav?v=151'],
-  moneyGain:['audio/money_gain_v151.wav?v=151'],
-  moneyLoss:['audio/money_loss_v151.wav?v=151']
+  rankDownBig:['audio/rank_down_big.wav']
 };
-const effectBuffers={step:[],roll:[],land:[],rankUp:[],rankUpBig:[],rankDown:[],rankDownBig:[],moneyLap:[],moneyGain:[],moneyLoss:[]};
+const effectBuffers={step:[],roll:[],land:[],rankUp:[],rankUpBig:[],rankDown:[],rankDownBig:[]};
 let effectsGain=null;
 
 // ===== 環境音：AudioContext上で時間指定して途切れなくクロスフェード =====
@@ -227,7 +224,7 @@ async function fetchBuffer(url){
 async function loadAllAudioBuffers(){
   // 効果音と環境音は独立して読む。1ファイル失敗しても全部を止めない。
   const effectJobs=[];
-  for(const key of ['step','roll','land','rankUp','rankUpBig','rankDown','rankDownBig','moneyLap','moneyGain','moneyLoss']){
+  for(const key of ['step','roll','land','rankUp','rankUpBig','rankDown','rankDownBig']){
     effectBuffers[key]=[];
     EFFECT_FILES[key].forEach((url,idx)=>{
       effectJobs.push(
@@ -287,10 +284,65 @@ function rankChangeSound(delta){
   else if(delta===-1)playEffect('rankDown',0,.86);
 }
 
-/* 俸禄専用WAV。電子音ではなく硬貨らしい短い金属音。 */
-function lapMoneySound(){playEffect('moneyLap',0,1.18)}
-function warGainSound(){playEffect('moneyGain',0,1.35)}
-function warLossSound(){playEffect('moneyLoss',0,1.25)}
+/* 俸禄音：外部ファイルに依存せずAudioContext内で生成。
+   既存効果音が鳴る環境なら同じAudioContext経由で再生できる。 */
+const moneyBuffers={lap:null,gain:null,loss:null};
+
+function makeMoneyBuffer(kind){
+  if(!audioContext)return null;
+  const sr=audioContext.sampleRate||44100;
+  const duration=kind==='gain'?.92:kind==='loss'?.78:.62;
+  const buffer=audioContext.createBuffer(1,Math.floor(sr*duration),sr);
+  const data=buffer.getChannelData(0);
+
+  const strikes=kind==='gain'
+    ? [[0,.95,980],[.075,.82,1380],[.155,.88,820],[.235,.68,1620],[.325,.70,1080]]
+    : kind==='loss'
+      ? [[0,.92,760],[.11,.80,610],[.22,.64,480]]
+      : [[0,.96,1180],[.025,.42,1760]];
+
+  for(const [start,amp,base] of strikes){
+    const startSample=Math.floor(start*sr);
+    for(let i=startSample;i<data.length;i++){
+      const t=(i-startSample)/sr;
+      const attack=Math.min(1,t/.004);
+      const decay=Math.exp(-(kind==='loss'?4.4:5.2)*t);
+      const env=attack*decay;
+      const metallic=
+        Math.sin(2*Math.PI*base*t) * .72 +
+        Math.sin(2*Math.PI*base*1.48*t+.7) * .42 +
+        Math.sin(2*Math.PI*base*2.17*t+1.1) * .25 +
+        Math.sin(2*Math.PI*base*2.83*t+.3) * .14;
+      const transient=(Math.random()*2-1)*Math.exp(-36*t)*.08;
+      data[i]+=amp*(metallic+transient)*env*.28;
+    }
+  }
+
+  let peak=0;
+  for(let i=0;i<data.length;i++)peak=Math.max(peak,Math.abs(data[i]));
+  if(peak>0){
+    const scale=.78/peak;
+    for(let i=0;i<data.length;i++)data[i]*=scale;
+  }
+  return buffer;
+}
+
+function playMoneySound(kind,volume=1){
+  if(!audioContext||audioContext.state!=='running')return;
+  if(!moneyBuffers[kind])moneyBuffers[kind]=makeMoneyBuffer(kind);
+  const buf=moneyBuffers[kind];
+  if(!buf)return;
+  const src=audioContext.createBufferSource();
+  const g=audioContext.createGain();
+  src.buffer=buf;
+  g.gain.value=volume;
+  src.connect(g);
+  g.connect(effectsGain||audioContext.destination);
+  src.start();
+}
+function lapMoneySound(){playMoneySound('lap',1.18)}
+function warGainSound(){playMoneySound('gain',1.28)}
+function warLossSound(){playMoneySound('loss',1.18)}
 
 /* 出世するほど、同じ木駒音を少し重く・強くする。 */
 function rankStepSound(playerIndex){

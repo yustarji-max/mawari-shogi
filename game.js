@@ -116,8 +116,8 @@ function awardWarMoney(finish){
     if(got){
       players[w].gameWarWins=(players[w].gameWarWins||0)+1;
       log(`戦争俸禄：${players[w].name}が${players[l].name}から半分獲得`);
-      warGainSound();
-      setTimeout(warLossSound,190);
+      setTimeout(()=>warGainSound(),220);
+      setTimeout(()=>warLossSound(),520);
     }
   });
 }
@@ -195,9 +195,12 @@ const EFFECT_FILES={
   rankUp:['audio/rank_up.wav'],
   rankUpBig:['audio/rank_up_big.wav'],
   rankDown:['audio/rank_down.wav'],
-  rankDownBig:['audio/rank_down_big.wav']
+  rankDownBig:['audio/rank_down_big.wav'],
+  moneyLap:['audio/money_lap.wav'],
+  moneyGain:['audio/money_gain.wav'],
+  moneyLoss:['audio/money_loss.wav']
 };
-const effectBuffers={step:[],roll:[],land:[]};
+const effectBuffers={step:[],roll:[],land:[],rankUp:[],rankUpBig:[],rankDown:[],rankDownBig:[],moneyLap:[],moneyGain:[],moneyLoss:[]};
 let effectsGain=null;
 
 // ===== 環境音：AudioContext上で時間指定して途切れなくクロスフェード =====
@@ -224,7 +227,7 @@ async function fetchBuffer(url){
 async function loadAllAudioBuffers(){
   // 効果音と環境音は独立して読む。1ファイル失敗しても全部を止めない。
   const effectJobs=[];
-  for(const key of ['step','roll','land','rankUp','rankUpBig','rankDown','rankDownBig']){
+  for(const key of ['step','roll','land','rankUp','rankUpBig','rankDown','rankDownBig','moneyLap','moneyGain','moneyLoss']){
     effectBuffers[key]=[];
     EFFECT_FILES[key].forEach((url,idx)=>{
       effectJobs.push(
@@ -284,24 +287,10 @@ function rankChangeSound(delta){
   else if(delta===-1)playEffect('rankDown',0,.86);
 }
 
-/* 俸禄の動きは短い金属音。WAV追加なしでAudioContext内生成。 */
-function moneyTone(kind='lap'){
-  if(!audioContext||audioContext.state!=='running')return;
-  const now=audioContext.currentTime;
-  const master=effectsGain||audioContext.destination;
-  const notes=kind==='gain'?[880,1320,1760]:kind==='loss'?[520,390]:[1040,1450];
-  notes.forEach((freq,n)=>{
-    const osc=audioContext.createOscillator(),g=audioContext.createGain();
-    osc.type='sine';osc.frequency.setValueAtTime(freq,now+n*.055);
-    g.gain.setValueAtTime(0,now+n*.055);
-    g.gain.linearRampToValueAtTime(kind==='loss'?.11:.14,now+n*.055+.008);
-    g.gain.exponentialRampToValueAtTime(.001,now+n*.055+.14);
-    osc.connect(g);g.connect(master);osc.start(now+n*.055);osc.stop(now+n*.055+.16);
-  });
-}
-function lapMoneySound(){moneyTone('lap')}
-function warGainSound(){moneyTone('gain')}
-function warLossSound(){moneyTone('loss')}
+/* 俸禄専用WAV。電子音ではなく硬貨らしい短い金属音。 */
+function lapMoneySound(){playEffect('moneyLap',0,1.0)}
+function warGainSound(){playEffect('moneyGain',0,1.15)}
+function warLossSound(){playEffect('moneyLoss',0,1.05)}
 
 /* 出世するほど、同じ木駒音を少し重く・強くする。 */
 function rankStepSound(playerIndex){

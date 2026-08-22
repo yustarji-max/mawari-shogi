@@ -953,8 +953,9 @@ async function resolveNormalRoll(value){
   const movedMembers=stackMembers(movingBottom);
   const corner=isCorner(players[active].pos);
   if(corner){
-    // 移動して角へ到達した時は、一緒に運ばれた全員が出世。0なら手番の駒だけ。
-    const targets=value>0?movedMembers:[active];
+    // 角で出世するのは、この手番で実際に角へ到達した駒だけ。
+    // 角に先にいた駒は、後からおんぶ状態になっても再出世しない。
+    const targets=[active];
     const winners=[];
     for(const i of targets){
       const p=players[i];

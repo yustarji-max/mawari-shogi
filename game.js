@@ -278,7 +278,14 @@ function woodRollTick(speed=0.5){
 function clack(){ woodStep(); }
 function thud(){ playEffect('land',0,1.0); }
 function whoosh(){ /* 余計な電子音は鳴らさない */ }
-function rankChangeSound(delta){
+let lastRankSound={key:'',time:0};
+function rankChangeSound(delta,playerIndex=null,beforeRank=null,afterRank=null){
+  const now=performance.now();
+  const key=`${playerIndex}:${beforeRank}:${afterRank}:${delta}`;
+  // 同じプレイヤーの同じランク変動が短時間に二重発火しても1回だけ鳴らす。
+  if(key===lastRankSound.key && now-lastRankSound.time<700)return;
+  lastRankSound={key,time:now};
+
   if(delta>=2)playEffect('rankUpBig',0,.9);
   else if(delta===1)playEffect('rankUp',0,.9);
   else if(delta<=-2)playEffect('rankDownBig',0,.86);
@@ -742,7 +749,12 @@ async function moveNormal(playerIndex,steps){
     moveStackTo(movingBottom,next);
     movingMembers.forEach(i=>{
       players[i].travelSteps=(players[i].travelSteps||0)+1;
-      if(players[i].travelSteps%32===0){addMoney(i,LAP_BONUS,'一周');lapMoneySound();}
+      if(players[i].travelSteps%32===0){
+        addMoney(i,LAP_BONUS,'一周');
+        const landingOnCorner=isCorner(next) && i===playerIndex;
+        if(landingOnCorner)setTimeout(lapMoneySound,1050);
+        else lapMoneySound();
+      }
     });
     await showHand(next,playerIndex,true);
     renderPieces();rankStepSound(playerIndex);await sleep(190+Math.min(24,(players[playerIndex]?.rank||0)*2));
@@ -797,7 +809,7 @@ async function showRankChange(playerIndex,delta,label){
   const p=players[playerIndex],beforeRank=p.rank,before=RANKS[p.rank];
   promote(playerIndex,delta);
   const afterRank=p.rank,after=RANKS[p.rank];
-  rankChangeSound(delta);
+  rankChangeSound(delta,playerIndex,beforeRank,afterRank);
   if(afterRank>beforeRank)awardPromotion(playerIndex,beforeRank,afterRank,delta);
   await showEvent(label,`<div style="font-size:20px;font-weight:900;color:${p.color}">${p.name}<br>${before} → ${after}</div>`,760);
   log(`${p.name}：${before} → ${after}`);render();

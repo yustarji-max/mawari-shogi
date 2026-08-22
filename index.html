@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>まわり将棋 v1.0.61</title>
-  <link rel="stylesheet" href="style.css?v=161">
+  <title>まわり将棋 v1.0.62</title>
+  <link rel="stylesheet" href="style.css?v=162">
   <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png?v=160">
   <link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png?v=160">
 </head>
 <body>
 
-<section id="titleScreen" class="title-screen"><div class="version-badge title-version">v1.0.61</div>
+<section id="titleScreen" class="title-screen"><div class="version-badge title-version">v1.0.62</div>
   <div class="title-art">
     <img src="assets/title-hero.png" alt="まわり将棋 戦争（仮）">
   </div>
@@ -36,11 +36,11 @@
   </div>
 </section>
 
-<main id="gameApp" class="app"><div id="moneyFxLayer" class="money-fx-layer" aria-hidden="true"></div><div class="version-badge game-version">v1.0.61</div>
+<main id="gameApp" class="app"><div id="moneyFxLayer" class="money-fx-layer" aria-hidden="true"></div><div class="version-badge game-version">v1.0.62</div>
   <header id="appHeader" class="app-header">
     <div>
       <h1>まわり将棋</h1>
-      <p class="sub">v1.0.61</p>
+      <p class="sub">v1.0.62</p>
     </div>
     <div class="header-actions">
 <button id="recordsButton" class="rules-button" type="button">記録</button>
@@ -52,7 +52,7 @@
 
   <div id="playNav" class="play-nav" hidden>
       <button id="playBackButton" class="plain-back-button" type="button">← タイトル</button>
-      <div class="play-header-title">まわり将棋 <span>v1.0.61</span></div>
+      <div class="play-header-title">まわり将棋 <span>v1.0.62</span></div>
       <div class="play-actions">
         <button id="playRulesButton" class="mini-action" type="button">ルール</button>
         <button id="playRecordsButton" class="mini-action" type="button">記録</button>
@@ -102,15 +102,7 @@
         <h2 id="rulesTitle">遊び方</h2>
         <button id="rulesClose" class="rules-close" type="button" aria-label="閉じる">×</button>
 </div>
-      <div class="rule-note onbu-corner-rule">
-        <b>角とおんぶの出世</b><br>
-        下の駒がおんぶしたまま角へ到達した場合は、一緒に移動した駒が全員出世します。<br>
-        上の駒が金を振っておんぶを降り、単独で角へ進んだ場合は、その駒だけが出世します。<br>
-        すでに駒がいる角へ後から止まって、その場でおんぶになった場合も、後から来た駒だけが出世します。
-      </div>
-
-
-      <details open>
+<details open>
         <summary>基本</summary>
         <p>4人で盤の外周を時計回りに進みます。遊ぶ人が少ない席はCPUが担当します。金4枚の合計点だけ進み、最初に王将へ出世した人が1位です。</p>
         <p><b>金：</b>表1点／裏0点／横立ち5点／縦立ち10点</p>
@@ -138,6 +130,13 @@
       <details>
         <summary>戦争</summary>
         <p>盤の向かい側で駒同士が正面から向き合うと戦争です。おんぶ中でも全員が別々に金を振り、個人順位を決めます。戦争後はおんぶを解消します。</p>
+        <div class="onbu-corner-detail">
+          <b>角でのおんぶと出世</b><br>
+          おんぶしたまま角へ到達した場合は、一緒に移動した駒が全員出世します。<br>
+          上の駒が金を振っておんぶを降り、単独で角へ進んだ場合は、その駒だけが出世します。<br>
+          すでに駒がいる角へ後から止まって、その場でおんぶになった場合も、後から来た駒だけが出世します。
+        </div>
+
         <p><b>2人：</b>出世(+1)／降格(-1)</p>
         <p><b>3人：</b>大出世(+2)／現状維持(0)／大降格(-2)</p>
         <p><b>4人：</b>大出世(+2)／出世(+1)／降格(-1)／大降格(-2)</p>
@@ -169,6 +168,6 @@
   </div>
 
 </main>
-<script src="game.js?v=161"></script>
+<script src="game.js?v=162"></script>
 </body>
 </html>

@@ -116,8 +116,8 @@ function awardWarMoney(finish){
     if(got){
       players[w].gameWarWins=(players[w].gameWarWins||0)+1;
       log(`戦争俸禄：${players[w].name}が${players[l].name}から半分獲得`);
-      setTimeout(()=>warGainSound(),220);
-      setTimeout(()=>warLossSound(),520);
+      setTimeout(()=>warGainSound(),420);
+      setTimeout(()=>warLossSound(),1050);
     }
   });
 }
@@ -196,9 +196,9 @@ const EFFECT_FILES={
   rankUpBig:['audio/rank_up_big.wav'],
   rankDown:['audio/rank_down.wav'],
   rankDownBig:['audio/rank_down_big.wav'],
-  moneyLap:['audio/money_lap.wav'],
-  moneyGain:['audio/money_gain.wav'],
-  moneyLoss:['audio/money_loss.wav']
+  moneyLap:['audio/money_lap_v151.wav?v=151'],
+  moneyGain:['audio/money_gain_v151.wav?v=151'],
+  moneyLoss:['audio/money_loss_v151.wav?v=151']
 };
 const effectBuffers={step:[],roll:[],land:[],rankUp:[],rankUpBig:[],rankDown:[],rankDownBig:[],moneyLap:[],moneyGain:[],moneyLoss:[]};
 let effectsGain=null;
@@ -288,9 +288,9 @@ function rankChangeSound(delta){
 }
 
 /* 俸禄専用WAV。電子音ではなく硬貨らしい短い金属音。 */
-function lapMoneySound(){playEffect('moneyLap',0,1.0)}
-function warGainSound(){playEffect('moneyGain',0,1.15)}
-function warLossSound(){playEffect('moneyLoss',0,1.05)}
+function lapMoneySound(){playEffect('moneyLap',0,1.18)}
+function warGainSound(){playEffect('moneyGain',0,1.35)}
+function warLossSound(){playEffect('moneyLoss',0,1.25)}
 
 /* 出世するほど、同じ木駒音を少し重く・強くする。 */
 function rankStepSound(playerIndex){

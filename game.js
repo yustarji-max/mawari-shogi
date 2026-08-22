@@ -160,29 +160,57 @@ function showPlayerMoneyDelta(index,amount){
   const el=document.createElement('div');
   el.className=`player-money-delta ${amount>0?'plus':'minus'}`;
   el.textContent=`${amount>0?'+':'−'}${moneyText(Math.abs(amount))}`;
-  box.appendChild(el); setTimeout(()=>el.remove(),1050);
+  box.appendChild(el); setTimeout(()=>el.remove(),2250);
 }
 function showMoneyFx(kind,main,sub=''){
   if(!moneyFxLayer)return;
   const el=document.createElement('div'); el.className=`money-fx ${kind}`;
   el.innerHTML=`<div>${main}</div>${sub?`<div class="sub">${sub}</div>`:''}`;
-  moneyFxLayer.appendChild(el); setTimeout(()=>el.remove(),1050);
+  moneyFxLayer.appendChild(el); setTimeout(()=>el.remove(),2250);
 }
 function showMoneyGain(index,amount,label){
   showPlayerMoneyDelta(index,amount);
   showMoneyFx('gain',`＋${moneyText(amount)}`,`${players[index].name}　${label}`);
 }
 function animateMoneyTransfer(fromIndex,toIndex,amount){
-  showPlayerMoneyDelta(fromIndex,-amount); showPlayerMoneyDelta(toIndex,amount);
+  showPlayerMoneyDelta(fromIndex,-amount);
+  showPlayerMoneyDelta(toIndex,amount);
   showMoneyFx('transfer',`${players[fromIndex].name} → ${players[toIndex].name}`,`${moneyText(amount)} 移動`);
-  const from=playerBoxFor(fromIndex),to=playerBoxFor(toIndex); if(!from||!to||!moneyFxLayer)return;
+
+  const from=playerBoxFor(fromIndex),to=playerBoxFor(toIndex);
+  if(!from||!to||!moneyFxLayer)return;
+
   const a=from.getBoundingClientRect(),b=to.getBoundingClientRect();
-  const sx=a.left+a.width/2,sy=a.top+a.height/2,tx=b.left+b.width/2,ty=b.top+b.height/2;
-  for(let i=0;i<5;i++){
-    const coin=document.createElement('div'); coin.className='money-coin-flight';
-    coin.style.left=`${sx}px`; coin.style.top=`${sy}px`; moneyFxLayer.appendChild(coin);
-    coin.animate([{left:`${sx}px`,top:`${sy}px`,opacity:0},{opacity:1,offset:.18},{left:`${(sx+tx)/2}px`,top:`${(sy+ty)/2-18}px`,opacity:1,offset:.56},{left:`${tx}px`,top:`${ty}px`,opacity:0}],{duration:620,delay:i*55,easing:'cubic-bezier(.2,.7,.2,1)',fill:'forwards'});
-    setTimeout(()=>coin.remove(),760+i*55);
+  const sx=a.left+a.width/2,sy=a.top+a.height/2;
+  const tx=b.left+b.width/2,ty=b.top+b.height/2;
+
+  // 小判を7枚。固定レイヤー上で left/top をアニメーションさせるのでiPhoneでも見失いにくい。
+  for(let i=0;i<7;i++){
+    const koban=document.createElement('div');
+    koban.className='koban-flight';
+    koban.style.left=`${sx}px`;
+    koban.style.top=`${sy}px`;
+    moneyFxLayer.appendChild(koban);
+
+    const delay=i*80;
+    const midX=sx+(tx-sx)*.52;
+    const midY=sy+(ty-sy)*.48-26-(i%2)*7;
+
+    const anim=koban.animate([
+      {left:`${sx}px`,top:`${sy}px`,opacity:0,transform:'translate(-50%,-50%) rotate(-12deg) scale(.82)'},
+      {left:`${sx}px`,top:`${sy}px`,opacity:1,transform:'translate(-50%,-50%) rotate(4deg) scale(1)',offset:.14},
+      {left:`${midX}px`,top:`${midY}px`,opacity:1,transform:'translate(-50%,-50%) rotate(190deg) scale(1.08)',offset:.56},
+      {left:`${tx}px`,top:`${ty}px`,opacity:1,transform:'translate(-50%,-50%) rotate(340deg) scale(.92)',offset:.88},
+      {left:`${tx}px`,top:`${ty}px`,opacity:0,transform:'translate(-50%,-50%) rotate(380deg) scale(.72)'}
+    ],{
+      duration:1050,
+      delay,
+      easing:'cubic-bezier(.18,.72,.2,1)',
+      fill:'forwards'
+    });
+
+    anim.onfinish=()=>koban.remove();
+    setTimeout(()=>koban.remove(),1450+delay);
   }
 }
 
@@ -792,7 +820,7 @@ async function moveNormal(playerIndex,steps){
       }
     });
     await showHand(next,playerIndex,true);
-    renderPieces();rankStepSound(playerIndex);await sleep(190+Math.min(24,(players[playerIndex]?.rank||0)*2));
+    renderPieces();rankStepSound(playerIndex);await sleep(158+Math.min(18,(players[playerIndex]?.rank||0)*1.5));
   }
   hand.classList.remove('show');await sleep(90);renderPieces();
   if(steps>0)maybeOnbuAfterMove(movingBottom);
@@ -936,7 +964,7 @@ async function moveWarPlayer(playerIndex,steps){
     war.progress.set(playerIndex,old+1);
     renderPieces();
     clack();
-    await sleep(190);
+    await sleep(160);
   }
 }
 async function resolveWarRoll(value){
@@ -958,12 +986,12 @@ async function resolveWarRoll(value){
         await sleep(90);
         animateMoneyTransfer(gained.loser,gained.winner,gained.amount);
         warGainSound();
-        await sleep(820);
+        await sleep(1750);
       }else if(lost){
         await sleep(90);
         showMoneyFx('loss',`−${moneyText(lost.amount)}`,`${players[lost.loser].name} → ${players[lost.winner].name}`);
         warLossSound();
-        await sleep(600);
+        await sleep(1350);
       }
     }
     render();
@@ -985,14 +1013,20 @@ async function resolveWarRoll(value){
 async function resolveNormalRoll(value){
   const active=turnIndex;
   const beforeBottom=stackBottom(active);
+
+  // 移動前のスタック構成を保存。
+  // 「おんぶしたまま角へ到達」と「角で新たにおんぶ」を区別するために使う。
+  const preMoveMembers=stackMembers(beforeBottom).slice();
+
   await moveNormal(active,value);
   const movingBottom=stackBottom(active);
   const movedMembers=stackMembers(movingBottom);
   const corner=isCorner(players[active].pos);
   if(corner){
-    // 角で出世するのは、この手番で実際に角へ到達した駒だけ。
-    // 角に先にいた駒は、後からおんぶ状態になっても再出世しない。
-    const targets=[active];
+    // すでにおんぶ状態で一緒に角へ到達した駒は全員出世。
+    // 角で新たにおんぶになった場合は、後から角へ来た active だけ出世。
+    const arrivedTogether = value>0 && preMoveMembers.length>1;
+    const targets = arrivedTogether ? preMoveMembers : [active];
     const winners=[];
     for(const i of targets){
       const p=players[i];

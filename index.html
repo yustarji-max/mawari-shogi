@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>まわり将棋 v1.0.58</title>
-  <link rel="stylesheet" href="style.css?v=158">
+  <title>まわり将棋 v1.0.59</title>
+  <link rel="stylesheet" href="style.css?v=159">
 </head>
 <body>
 
-<section id="titleScreen" class="title-screen"><div class="version-badge title-version">v1.0.58</div>
+<section id="titleScreen" class="title-screen"><div class="version-badge title-version">v1.0.59</div>
   <div class="title-art">
     <img src="assets/title-hero.png" alt="まわり将棋 戦争（仮）">
   </div>
@@ -34,11 +34,11 @@
   </div>
 </section>
 
-<main id="gameApp" class="app"><div id="moneyFxLayer" class="money-fx-layer" aria-hidden="true"></div><div class="version-badge game-version">v1.0.58</div>
+<main id="gameApp" class="app"><div id="moneyFxLayer" class="money-fx-layer" aria-hidden="true"></div><div class="version-badge game-version">v1.0.59</div>
   <header id="appHeader" class="app-header">
     <div>
       <h1>まわり将棋</h1>
-      <p class="sub">v1.0.58</p>
+      <p class="sub">v1.0.59</p>
     </div>
     <div class="header-actions">
 <button id="recordsButton" class="rules-button" type="button">記録</button>
@@ -50,7 +50,7 @@
 
   <div id="playNav" class="play-nav" hidden>
       <button id="playBackButton" class="plain-back-button" type="button">← タイトル</button>
-      <div class="play-header-title">まわり将棋 <span>v1.0.58</span></div>
+      <div class="play-header-title">まわり将棋 <span>v1.0.59</span></div>
       <div class="play-actions">
         <button id="playRulesButton" class="mini-action" type="button">ルール</button>
         <button id="playRecordsButton" class="mini-action" type="button">記録</button>
@@ -99,7 +99,13 @@
       <div class="rules-head">
         <h2 id="rulesTitle">遊び方</h2>
         <button id="rulesClose" class="rules-close" type="button" aria-label="閉じる">×</button>
-      </div>
+      
+<div class="rule-note onbu-corner-rule">
+  <b>角とおんぶの出世</b><br>
+  おんぶしたまま角へ到達した場合は、一緒に移動してきた駒は両方出世します。<br>
+  すでに駒が止まっている角へ別の駒が止まり、その場でおんぶになった場合は、後から角へ来た駒だけが出世し、先にいた駒は再出世しません。
+</div>
+</div>
 
       <details open>
         <summary>基本</summary>
@@ -160,6 +166,6 @@
   </div>
 
 </main>
-<script src="game.js?v=158"></script>
+<script src="game.js?v=159"></script>
 </body>
 </html>

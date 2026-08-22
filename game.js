@@ -106,6 +106,7 @@ function awardPromotion(index,beforeRank,afterRank,delta){
   return total;
 }
 function awardWarMoney(finish){
+  const transfers=[];
   const pairs=finish.length===2?[[0,1]]:
               finish.length===3?[[0,2]]:
               finish.length===4?[[0,3],[1,2]]:[];
@@ -116,10 +117,10 @@ function awardWarMoney(finish){
     if(got){
       players[w].gameWarWins=(players[w].gameWarWins||0)+1;
       log(`戦争俸禄：${players[w].name}が${players[l].name}から半分獲得`);
-      setTimeout(()=>warGainSound(),520);
-      setTimeout(()=>warLossSound(),1250);
+      transfers.push({winner:w,loser:l,amount:got});
     }
   });
+  return transfers;
 }
 function finalizeHumanRecords(){
   players.filter(p=>!p.cpu&&p.profileId).forEach(p=>{
@@ -287,62 +288,50 @@ function rankChangeSound(delta){
 /* 俸禄音：外部ファイルに依存せずAudioContext内で生成。
    既存効果音が鳴る環境なら同じAudioContext経由で再生できる。 */
 const moneyBuffers={lap:null,gain:null,loss:null};
-
 function makeMoneyBuffer(kind){
   if(!audioContext)return null;
   const sr=audioContext.sampleRate||44100;
-  const duration=kind==='gain'?.92:kind==='loss'?.78:.62;
+  const duration=kind==='gain'?1.08:kind==='loss'?.76:.74;
   const buffer=audioContext.createBuffer(1,Math.floor(sr*duration),sr);
   const data=buffer.getChannelData(0);
-
   const strikes=kind==='gain'
-    ? [[0,.95,980],[.075,.82,1380],[.155,.88,820],[.235,.68,1620],[.325,.70,1080]]
+    ? [[0,.76,1120],[.06,.66,1480],[.13,.78,920],[.20,.62,1360],[.28,.74,1040],[.37,.62,1580],[.46,.68,860],[.56,.54,1260],[.66,.44,980]]
     : kind==='loss'
-      ? [[0,.92,760],[.11,.80,610],[.22,.64,480]]
-      : [[0,.96,1180],[.025,.42,1760]];
-
-  for(const [start,amp,base] of strikes){
-    const startSample=Math.floor(start*sr);
-    for(let i=startSample;i<data.length;i++){
-      const t=(i-startSample)/sr;
-      const attack=Math.min(1,t/.004);
-      const decay=Math.exp(-(kind==='loss'?4.4:5.2)*t);
-      const env=attack*decay;
-      const metallic=
-        Math.sin(2*Math.PI*base*t) * .72 +
-        Math.sin(2*Math.PI*base*1.48*t+.7) * .42 +
-        Math.sin(2*Math.PI*base*2.17*t+1.1) * .25 +
-        Math.sin(2*Math.PI*base*2.83*t+.3) * .14;
-      const transient=(Math.random()*2-1)*Math.exp(-36*t)*.08;
-      data[i]+=amp*(metallic+transient)*env*.28;
+      ? [[0,.66,720],[.10,.55,600],[.21,.44,500],[.33,.32,420]]
+      : [[0,.70,1680],[.045,.46,2360]];
+  for(const [st,amp,base] of strikes){
+    const s0=Math.floor(st*sr);
+    for(let i=s0;i<data.length;i++){
+      const t=(i-s0)/sr,attack=Math.min(1,t/.0025);
+      const decay=Math.exp(-(kind==='gain'?6.0:kind==='loss'?5.0:4.6)*t);
+      const metal=Math.sin(2*Math.PI*base*t)*.62+
+        Math.sin(2*Math.PI*base*1.53*t+.5)*.40+
+        Math.sin(2*Math.PI*base*2.31*t+1.0)*.24+
+        Math.sin(2*Math.PI*base*3.12*t+.2)*.12;
+      const tick=(Math.random()*2-1)*Math.exp(-55*t)*.05;
+      data[i]+=amp*(metal+tick)*attack*decay*.24;
     }
   }
-
-  let peak=0;
-  for(let i=0;i<data.length;i++)peak=Math.max(peak,Math.abs(data[i]));
-  if(peak>0){
-    const scale=.78/peak;
-    for(let i=0;i<data.length;i++)data[i]*=scale;
+  if(kind==='lap'){
+    for(let i=0;i<data.length;i++){
+      const t=i/sr;
+      if(t>.035){const u=t-.035;data[i]+=Math.sin(2*Math.PI*2920*u)*Math.exp(-4.0*u)*.085;}
+    }
   }
+  let peak=0;for(let i=0;i<data.length;i++)peak=Math.max(peak,Math.abs(data[i]));
+  if(peak>0){const scale=.76/peak;for(let i=0;i<data.length;i++)data[i]*=scale;}
   return buffer;
 }
-
 function playMoneySound(kind,volume=1){
   if(!audioContext||audioContext.state!=='running')return;
   if(!moneyBuffers[kind])moneyBuffers[kind]=makeMoneyBuffer(kind);
-  const buf=moneyBuffers[kind];
-  if(!buf)return;
-  const src=audioContext.createBufferSource();
-  const g=audioContext.createGain();
-  src.buffer=buf;
-  g.gain.value=volume;
-  src.connect(g);
-  g.connect(effectsGain||audioContext.destination);
-  src.start();
+  const src=audioContext.createBufferSource(),g=audioContext.createGain();
+  src.buffer=moneyBuffers[kind];g.gain.value=volume;
+  src.connect(g);g.connect(effectsGain||audioContext.destination);src.start();
 }
-function lapMoneySound(){playMoneySound('lap',1.18)}
+function lapMoneySound(){playMoneySound('lap',1.10)}
 function warGainSound(){playMoneySound('gain',1.28)}
-function warLossSound(){playMoneySound('loss',1.18)}
+function warLossSound(){playMoneySound('loss',1.00)}
 
 /* 出世するほど、同じ木駒音を少し重く・強くする。 */
 function rankStepSound(playerIndex){
@@ -910,14 +899,26 @@ async function resolveWarRoll(value){
   if(war.finish.length===war.participants.length){
     const finish=[...war.finish],delta=WAR_DELTA[finish.length];
     await showEvent('勝負あり',finish.map((rep,n)=>`${players[rep].name}　${resultLabel(delta[n])}`).join('<br>'),1050);
+    const moneyTransfers=awardWarMoney(finish);
     for(let n=0;n<finish.length;n++){
       const playerIndex=finish[n],d=delta[n];
       if(d!==0)await showRankChange(playerIndex,d,resultLabel(d));
       else await showEvent('現状維持',`<b style="color:${players[playerIndex].color}">${players[playerIndex].name}</b>`,420);
+
+      const gained=moneyTransfers.find(t=>t.winner===playerIndex);
+      const lost=moneyTransfers.find(t=>t.loser===playerIndex);
+      if(gained){
+        await sleep(90);
+        warGainSound();
+        await sleep(820);
+      }else if(lost){
+        await sleep(90);
+        warLossSound();
+        await sleep(600);
+      }
     }
-    awardWarMoney(finish);
     render();
-    await sleep(420);
+    await sleep(180);
     const bottoms=[...war.involvedBottoms];
     bottoms.forEach(bottom=>dissolveStack(bottom));
     war.active=false;

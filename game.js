@@ -21,6 +21,7 @@ const turnBox=document.querySelector('#turnBox');
 const rollButton=document.querySelector('#rollButton');
 const audioButton=document.querySelector('#audioButton');
 const resultEl=document.querySelector('#result');
+const anticipationEl=document.querySelector('#anticipation');
 const battleGauge=document.querySelector('#battleGauge');
 const battleGaugeMarker=document.querySelector('#battleGaugeMarker');
 const logEl=document.querySelector('#log');
@@ -115,6 +116,8 @@ function awardWarMoney(finish){
     if(got){
       players[w].gameWarWins=(players[w].gameWarWins||0)+1;
       log(`戦争俸禄：${players[w].name}が${players[l].name}から半分獲得`);
+      warGainSound();
+      setTimeout(warLossSound,190);
     }
   });
 }
@@ -279,6 +282,32 @@ function rankChangeSound(delta){
   else if(delta===1)playEffect('rankUp',0,.9);
   else if(delta<=-2)playEffect('rankDownBig',0,.86);
   else if(delta===-1)playEffect('rankDown',0,.86);
+}
+
+/* 俸禄の動きは短い金属音。WAV追加なしでAudioContext内生成。 */
+function moneyTone(kind='lap'){
+  if(!audioContext||audioContext.state!=='running')return;
+  const now=audioContext.currentTime;
+  const master=effectsGain||audioContext.destination;
+  const notes=kind==='gain'?[880,1320,1760]:kind==='loss'?[520,390]:[1040,1450];
+  notes.forEach((freq,n)=>{
+    const osc=audioContext.createOscillator(),g=audioContext.createGain();
+    osc.type='sine';osc.frequency.setValueAtTime(freq,now+n*.055);
+    g.gain.setValueAtTime(0,now+n*.055);
+    g.gain.linearRampToValueAtTime(kind==='loss'?.11:.14,now+n*.055+.008);
+    g.gain.exponentialRampToValueAtTime(.001,now+n*.055+.14);
+    osc.connect(g);g.connect(master);osc.start(now+n*.055);osc.stop(now+n*.055+.16);
+  });
+}
+function lapMoneySound(){moneyTone('lap')}
+function warGainSound(){moneyTone('gain')}
+function warLossSound(){moneyTone('loss')}
+
+/* 出世するほど、同じ木駒音を少し重く・強くする。 */
+function rankStepSound(playerIndex){
+  const rank=players[playerIndex]?.rank||0;
+  const volume=Math.min(1.12,.78+rank*.027);
+  playEffect('step',rank%3,volume);
 }
 
 function stopEnvironmentEngine(){
@@ -550,11 +579,69 @@ function renderPlayers(){
 }
 function renderLadder(){
   const root=document.querySelector('#rankRows');root.innerHTML='';
-  for(let rank=12;rank>=0;rank--){
+  for(let rank=0;rank<=12;rank++){
     const row=document.createElement('div');
-    row.className='rank-row '+(rank===12?'solo':rank%2===1?'pair-top':'pair-bottom');const current=running?(war?currentWarPlayerIndex():turnIndex):-1;if(current>=0&&players[current].rank===rank){row.classList.add('current');row.style.setProperty('--hi',players[current].color);}row.textContent=RANKS[rank];const markers=document.createElement('div');markers.className='markers';players.forEach(p=>{if(p.rank===rank){const m=document.createElement('span');m.className='marker';m.style.background=p.color;markers.appendChild(m);}});row.appendChild(markers);root.appendChild(row);}
+    row.className='rank-row';
+    const current=running?(war?currentWarPlayerIndex():turnIndex):-1;
+    if(current>=0&&players[current].rank===rank){
+      row.classList.add('current');row.style.setProperty('--hi',players[current].color);
+    }
+    row.appendChild(document.createTextNode(RANKS[rank]));
+    const markers=document.createElement('div');markers.className='markers';
+    players.forEach(p=>{if(p.rank===rank){const m=document.createElement('span');m.className='marker';m.style.background=p.color;markers.appendChild(m);}});
+    row.appendChild(markers);root.appendChild(row);
+  }
 }
 function currentWarPlayerIndex(){return war.order[war.turnCursor]??war.order[0];}
+function nextPromotionDistance(pos){
+  const mod=((pos%8)+8)%8;
+  return mod===0?0:8-mod;
+}
+function warForecast(playerIndex,maxSteps=6){
+  if(playerIndex<0||!players[playerIndex]||war)return null;
+  const p=players[playerIndex];
+  for(let step=1;step<=maxSteps;step++){
+    const pos=(p.pos+step)%32;
+    if(isCorner(pos))continue;
+    const coord=COORDS[pos];
+    const enemies=[];
+    players.forEach((q,i)=>{
+      if(i===playerIndex||q.done)return;
+      const qc=COORDS[q.pos];
+      const opposite=(coord[0]===0&&qc[0]===8&&coord[1]===qc[1])||
+        (coord[0]===8&&qc[0]===0&&coord[1]===qc[1])||
+        (coord[1]===0&&qc[1]===8&&coord[0]===qc[0])||
+        (coord[1]===8&&qc[1]===0&&coord[0]===qc[0]);
+      if(opposite)enemies.push(i);
+    });
+    if(enemies.length)return {step,enemies};
+  }
+  return null;
+}
+function updateAnticipation(index){
+  if(!anticipationEl)return;
+  anticipationEl.innerHTML='';
+  board.querySelectorAll('.piece.war-forecast').forEach(el=>el.classList.remove('war-forecast'));
+  if(!running||war||index<0||!players[index]||players[index].done)return;
+  const p=players[index];
+  const promotion=nextPromotionDistance(p.pos);
+  if(promotion<=3){
+    const el=document.createElement('span');el.className='promotion-near';
+    el.textContent=promotion===0?'0で出世':`出世まで ${promotion}`;
+    anticipationEl.appendChild(el);
+  }
+  const wf=warForecast(index,6);
+  if(wf){
+    const el=document.createElement('span');el.className='war-near';
+    el.textContent=`戦争 ${wf.step}`;
+    anticipationEl.appendChild(el);
+    if(wf.step<=4){
+      wf.enemies.forEach(enemy=>{
+        board.querySelectorAll(`.piece[data-player="${enemy}"]`).forEach(piece=>piece.classList.add('war-forecast'));
+      });
+    }
+  }
+}
 function updateUI(){
   const index=war?currentWarPlayerIndex():turnIndex;
   const p=players[index];
@@ -579,7 +666,7 @@ function updateUI(){
     if(running)setTimeout(repairTurnState,0);
     // 初回案内の表示状態はlocalStorageで管理。
   }
-  renderPlayers();renderLadder();
+  renderPlayers();renderLadder();updateAnticipation(running&&p?index:-1);
 }
 function render(){renderPieces();updateUI();}
 
@@ -625,10 +712,10 @@ async function moveNormal(playerIndex,steps){
     moveStackTo(movingBottom,next);
     movingMembers.forEach(i=>{
       players[i].travelSteps=(players[i].travelSteps||0)+1;
-      if(players[i].travelSteps%32===0)addMoney(i,LAP_BONUS,'一周');
+      if(players[i].travelSteps%32===0){addMoney(i,LAP_BONUS,'一周');lapMoneySound();}
     });
     await showHand(next,playerIndex,true);
-    renderPieces();clack();await sleep(190);
+    renderPieces();rankStepSound(playerIndex);await sleep(190+Math.min(24,(players[playerIndex]?.rank||0)*2));
   }
   hand.classList.remove('show');await sleep(90);renderPieces();
   if(steps>0)maybeOnbuAfterMove(movingBottom);
@@ -840,7 +927,8 @@ async function performRoll(battleTier=0){
   busy=true;updateUI();
   try{
     if(!p.cpu) await ensureAudio();
-    const golds=goldRoll(war?battleTier:0);
+    const effectiveTier=(war&&!p.cpu)?battleTier:0;
+    const golds=goldRoll(effectiveTier);
     await settleGolds(golds);
     const value=totalGold(golds);
     resultEl.textContent=`${p.name}：${value}`;
@@ -964,12 +1052,8 @@ async function autoRoll(job=cpuJobId,expectedIndex=activeTurnIndex(),expectedWar
     activeTurnIndex()!==expectedIndex
   ) return;
 
-  let tier=0;
-  if(war){
-    const r=Math.random();
-    tier=r<.08?2:r<.28?1:0;
-  }
-  await performRoll(tier);
+  // 戦争ゲージの高目補正は人間専用。CPUは戦争中も通常確率。
+  await performRoll(0);
 }
 function nextTurn(){
   if(!running)return;

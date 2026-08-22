@@ -1717,3 +1717,232 @@ body.play-mode #rankTrack.rank-track{
     grid-template-columns:minmax(0,1fr) 78px!important;
   }
 }
+
+/* ===== v1.0.48 : rank track below board, left-to-right ===== */
+body.play-mode .board-row{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:4px!important;
+  width:100%!important;
+  max-width:100%!important;
+}
+body.play-mode #board{
+  width:min(100%,55svh)!important;
+  max-width:100%!important;
+  height:auto!important;
+  aspect-ratio:1 / 1!important;
+  flex:0 0 auto!important;
+}
+body.play-mode #rankTrack.rank-track{
+  width:min(100%,55svh)!important;
+  min-width:0!important;
+  max-width:100%!important;
+  height:42px!important;
+  min-height:42px!important;
+  margin:0!important;
+  padding:4px 5px!important;
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:repeat(12,minmax(0,1fr))!important;
+  grid-template-rows:1fr!important;
+  gap:0!important;
+  align-items:stretch!important;
+  border-left-width:1px!important;
+}
+body.play-mode #rankTrack .rank-item{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:2px!important;
+  min-width:0!important;
+  min-height:0!important;
+  width:auto!important;
+  height:100%!important;
+  padding:1px 0!important;
+  box-sizing:border-box!important;
+  border-right:1px solid rgba(90,72,47,.10)!important;
+}
+body.play-mode #rankTrack .rank-item:last-child{
+  border-right:0!important;
+}
+body.play-mode #rankTrack .rank-dot{
+  width:9px!important;
+  height:9px!important;
+  min-width:9px!important;
+  margin:0!important;
+  flex:0 0 9px!important;
+}
+body.play-mode #rankTrack .rank-label,
+body.play-mode #rankTrack .rank-item span{
+  min-width:0!important;
+  max-width:100%!important;
+  margin:0!important;
+  padding:0!important;
+  font-size:8px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  text-align:center!important;
+}
+body.play-mode #rankTrack .rank-item.current,
+body.play-mode #rankTrack .rank-item.active{
+  background:rgba(255,255,255,.34)!important;
+  border-radius:5px!important;
+}
+@media(max-height:760px){
+  body.play-mode #board{
+    width:min(100%,51svh)!important;
+  }
+  body.play-mode #rankTrack.rank-track{
+    width:min(100%,51svh)!important;
+    height:38px!important;
+    min-height:38px!important;
+    padding:3px 4px!important;
+  }
+  body.play-mode #rankTrack .rank-label,
+  body.play-mode #rankTrack .rank-item span{
+    font-size:7px!important;
+  }
+  body.play-mode #rankTrack .rank-dot{
+    width:8px!important;
+    height:8px!important;
+    min-width:8px!important;
+  }
+}
+
+/* ===== v1.0.49 : 回っている時間の期待感 + 横型出世表の実体修正 ===== */
+body.play-mode .board-row{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  gap:4px!important;
+}
+body.play-mode .board-column{
+  width:min(100%,55svh)!important;
+  max-width:100%!important;
+}
+body.play-mode #board{
+  width:100%!important;
+  max-width:100%!important;
+  aspect-ratio:1/1!important;
+}
+body.play-mode #ladder.ladder{
+  width:min(100%,55svh)!important;
+  max-width:100%!important;
+  min-width:0!important;
+  height:46px!important;
+  min-height:46px!important;
+  box-sizing:border-box!important;
+  padding:3px 4px!important;
+  margin:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+}
+body.play-mode #ladder h2{
+  margin:0 0 2px!important;
+  font-size:8px!important;
+  line-height:1!important;
+  text-align:left!important;
+}
+body.play-mode #ladder #rankRows{
+  display:grid!important;
+  grid-template-columns:repeat(13,minmax(0,1fr))!important;
+  grid-template-rows:1fr!important;
+  gap:1px!important;
+  flex:1!important;
+  min-height:0!important;
+}
+body.play-mode #ladder .rank-row{
+  position:relative!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:0!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:1px 0!important;
+  border:0!important;
+  border-radius:4px!important;
+  font-size:7px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  background:#f0e9dd!important;
+  overflow:visible!important;
+}
+body.play-mode #ladder .rank-row::before{display:none!important}
+body.play-mode #ladder .rank-row.current{
+  background:#fffaf0!important;
+  outline:2px solid var(--hi)!important;
+  outline-offset:-2px!important;
+}
+body.play-mode #ladder .markers{
+  position:static!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:1px!important;
+  width:100%!important;
+  max-width:none!important;
+  height:8px!important;
+  margin-top:2px!important;
+  flex-wrap:nowrap!important;
+}
+body.play-mode #ladder .marker{
+  width:7px!important;
+  height:7px!important;
+  min-width:7px!important;
+  border-radius:50%!important;
+}
+
+/* 次の出世・戦争の予兆。常時うるさくせず、近い時だけ見せる */
+.anticipation{
+  min-height:16px;
+  margin:1px 0 2px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:7px;
+  font-size:10px;
+  line-height:1;
+  color:#756956;
+  letter-spacing:.01em;
+}
+.anticipation:empty{opacity:0}
+.anticipation .promotion-near{
+  padding:2px 6px;
+  border-radius:999px;
+  background:#f4ead6;
+  border:1px solid #c8ad76;
+}
+.anticipation .war-near{
+  padding:2px 6px;
+  border-radius:999px;
+  background:#2a2119;
+  color:#f1d6a1;
+  border:1px solid #8f6538;
+}
+.piece.war-forecast{
+  animation:warForecastPulse .85s ease-in-out infinite alternate!important;
+}
+@keyframes warForecastPulse{
+  from{filter:drop-shadow(0 3px 2px #0003)}
+  to{filter:drop-shadow(0 0 7px #8b2e20) drop-shadow(0 3px 2px #0003)}
+}
+
+/* 金エリアを圧迫しすぎない */
+body.play-mode #roller{
+  min-height:112px!important;
+  max-height:136px!important;
+}
+
+@media(max-height:760px){
+  body.play-mode .board-column,
+  body.play-mode #ladder.ladder{width:min(100%,51svh)!important}
+  body.play-mode #ladder.ladder{height:42px!important;min-height:42px!important}
+  body.play-mode #ladder .rank-row{font-size:6.5px!important}
+  .anticipation{min-height:14px;font-size:9px}
+}

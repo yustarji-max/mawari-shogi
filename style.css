@@ -2020,3 +2020,42 @@ body.play-mode #roller{
   font-size:12px;
   line-height:1.55;
 }
+
+/* ===== v1.0.61 : 戦争俸禄を盤上の駒間で可視化 ===== */
+.board-money-delta{
+  position:fixed;
+  z-index:225;
+  transform:translate(-50%,-50%);
+  padding:3px 6px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:900;
+  line-height:1;
+  pointer-events:none;
+  opacity:0;
+  animation:boardMoneyDelta 1.9s ease-out forwards;
+  box-shadow:0 3px 10px rgba(0,0,0,.25);
+}
+.board-money-delta.plus{
+  background:#f6e4ac;
+  color:#5e4315;
+  border:1px solid #b88a3d;
+}
+.board-money-delta.minus{
+  background:#413932;
+  color:#f4e7d1;
+  border:1px solid #82705f;
+}
+@keyframes boardMoneyDelta{
+  0%{opacity:0;transform:translate(-50%,-35%) scale(.9)}
+  14%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}
+  72%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-72%) scale(.98)}
+}
+
+/* 小判は盤上で動くので少しだけ大きく */
+.koban-flight{
+  width:15px!important;
+  height:24px!important;
+  z-index:230!important;
+}

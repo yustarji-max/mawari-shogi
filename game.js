@@ -3,7 +3,7 @@
 
 const COLORS=['#b8493f','#315f8c','#668447','#8a5b91'];
 const SLEEVES=['#8f3b32','#244f78','#56743e','#704875'];
-const NAME_POOL=['たかし','みき','けんじ','ゆうこ','まさる','あきら','なおこ','みどり','しょうた','あや'];
+const NAME_POOL=['たかし','みき','けんじ','ゆうこ','まさる','あきら','なおこ','ひなた','しょうた','あや'];
 const RANKS=['歩','と','香','成香','桂','成桂','銀','成銀','角','馬','飛','龍','王'];
 const CORNERS=[0,8,16,24];
 const WAR_DELTA={2:[1,-1],3:[2,0,-2],4:[2,1,-1,-2]};
@@ -154,6 +154,36 @@ function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
 
 function moneyText(amount){return `${Number(amount||0).toLocaleString()}両`;}
 function playerBoxFor(index){return [...document.querySelectorAll('#players .player-box')][index]||null;}
+function boardPieceFor(index){
+  return board.querySelector(`.piece[data-player="${index}"]`);
+}
+function boardPointFor(index){
+  const piece=boardPieceFor(index);
+  if(piece){
+    const r=piece.getBoundingClientRect();
+    return {x:r.left+r.width/2,y:r.top+r.height/2};
+  }
+  // 戦争終了直前などで駒DOMが取れない場合は盤上座標から復元。
+  const p=players[index];
+  if(!p)return null;
+  const br=board.getBoundingClientRect();
+  const [rr,cc]=COORDS[(p.pos+32)%32];
+  return {
+    x:br.left+(cc+.5)*br.width/9,
+    y:br.top+(rr+.5)*br.height/9
+  };
+}
+function showBoardMoneyDelta(index,amount){
+  const pt=boardPointFor(index);
+  if(!pt||!moneyFxLayer||!amount)return;
+  const el=document.createElement('div');
+  el.className=`board-money-delta ${amount>0?'plus':'minus'}`;
+  el.textContent=`${amount>0?'+':'−'}${moneyText(Math.abs(amount))}`;
+  el.style.left=`${pt.x}px`;
+  el.style.top=`${pt.y-28}px`;
+  moneyFxLayer.appendChild(el);
+  setTimeout(()=>el.remove(),2050);
+}
 function showPlayerMoneyDelta(index,amount){
   const box=playerBoxFor(index); if(!box||!amount)return;
   box.querySelector('.player-money-delta')?.remove();
@@ -173,18 +203,17 @@ function showMoneyGain(index,amount,label){
   showMoneyFx('gain',`＋${moneyText(amount)}`,`${players[index].name}　${label}`);
 }
 function animateMoneyTransfer(fromIndex,toIndex,amount){
-  showPlayerMoneyDelta(fromIndex,-amount);
-  showPlayerMoneyDelta(toIndex,amount);
+  // 盤上の負けた駒 → 勝った駒へ俸禄が移動する。
+  showBoardMoneyDelta(fromIndex,-amount);
+  showBoardMoneyDelta(toIndex,amount);
   showMoneyFx('transfer',`${players[fromIndex].name} → ${players[toIndex].name}`,`${moneyText(amount)} 移動`);
 
-  const from=playerBoxFor(fromIndex),to=playerBoxFor(toIndex);
-  if(!from||!to||!moneyFxLayer)return;
+  const fromPt=boardPointFor(fromIndex),toPt=boardPointFor(toIndex);
+  if(!fromPt||!toPt||!moneyFxLayer)return;
 
-  const a=from.getBoundingClientRect(),b=to.getBoundingClientRect();
-  const sx=a.left+a.width/2,sy=a.top+a.height/2;
-  const tx=b.left+b.width/2,ty=b.top+b.height/2;
+  const sx=fromPt.x,sy=fromPt.y;
+  const tx=toPt.x,ty=toPt.y;
 
-  // 小判を7枚。固定レイヤー上で left/top をアニメーションさせるのでiPhoneでも見失いにくい。
   for(let i=0;i<7;i++){
     const koban=document.createElement('div');
     koban.className='koban-flight';
@@ -192,25 +221,25 @@ function animateMoneyTransfer(fromIndex,toIndex,amount){
     koban.style.top=`${sy}px`;
     moneyFxLayer.appendChild(koban);
 
-    const delay=i*80;
-    const midX=sx+(tx-sx)*.52;
-    const midY=sy+(ty-sy)*.48-26-(i%2)*7;
+    const delay=i*82;
+    const midX=sx+(tx-sx)*.5;
+    const midY=sy+(ty-sy)*.5-32-(i%3)*5;
 
     const anim=koban.animate([
-      {left:`${sx}px`,top:`${sy}px`,opacity:0,transform:'translate(-50%,-50%) rotate(-12deg) scale(.82)'},
-      {left:`${sx}px`,top:`${sy}px`,opacity:1,transform:'translate(-50%,-50%) rotate(4deg) scale(1)',offset:.14},
-      {left:`${midX}px`,top:`${midY}px`,opacity:1,transform:'translate(-50%,-50%) rotate(190deg) scale(1.08)',offset:.56},
-      {left:`${tx}px`,top:`${ty}px`,opacity:1,transform:'translate(-50%,-50%) rotate(340deg) scale(.92)',offset:.88},
+      {left:`${sx}px`,top:`${sy}px`,opacity:0,transform:'translate(-50%,-50%) rotate(-10deg) scale(.8)'},
+      {left:`${sx}px`,top:`${sy}px`,opacity:1,transform:'translate(-50%,-50%) rotate(12deg) scale(1)',offset:.12},
+      {left:`${midX}px`,top:`${midY}px`,opacity:1,transform:'translate(-50%,-50%) rotate(190deg) scale(1.06)',offset:.56},
+      {left:`${tx}px`,top:`${ty}px`,opacity:1,transform:'translate(-50%,-50%) rotate(330deg) scale(.94)',offset:.88},
       {left:`${tx}px`,top:`${ty}px`,opacity:0,transform:'translate(-50%,-50%) rotate(380deg) scale(.72)'}
     ],{
-      duration:1050,
+      duration:1100,
       delay,
       easing:'cubic-bezier(.18,.72,.2,1)',
       fill:'forwards'
     });
 
     anim.onfinish=()=>koban.remove();
-    setTimeout(()=>koban.remove(),1450+delay);
+    setTimeout(()=>koban.remove(),1500+delay);
   }
 }
 
@@ -989,6 +1018,7 @@ async function resolveWarRoll(value){
         await sleep(1750);
       }else if(lost){
         await sleep(90);
+        showBoardMoneyDelta(lost.loser,-lost.amount);
         showMoneyFx('loss',`−${moneyText(lost.amount)}`,`${players[lost.loser].name} → ${players[lost.winner].name}`);
         warLossSound();
         await sleep(1350);
@@ -1014,19 +1044,31 @@ async function resolveNormalRoll(value){
   const active=turnIndex;
   const beforeBottom=stackBottom(active);
 
-  // 移動前のスタック構成を保存。
-  // 「おんぶしたまま角へ到達」と「角で新たにおんぶ」を区別するために使う。
-  const preMoveMembers=stackMembers(beforeBottom).slice();
+  // この手番で「実際に一緒に移動する駒」を移動前に確定する。
+  // 上に乗っている駒が1以上を出した場合はおんぶを降りるので、
+  // 下にいた駒は travelingMembers に含めない。
+  let travelingMembers=[active];
+  if(value>0){
+    if(players[active].carrier!==null&&players[active].carrier!==undefined){
+      // active は上側。下から離れ、active とその上に乗る駒だけが進む。
+      travelingMembers=stackMembers(active).slice();
+    }else{
+      // active は山の一番下。上の駒も一緒に進む。
+      travelingMembers=stackMembers(active).slice();
+    }
+  }
 
   await moveNormal(active,value);
   const movingBottom=stackBottom(active);
   const movedMembers=stackMembers(movingBottom);
   const corner=isCorner(players[active].pos);
   if(corner){
-    // すでにおんぶ状態で一緒に角へ到達した駒は全員出世。
-    // 角で新たにおんぶになった場合は、後から角へ来た active だけ出世。
-    const arrivedTogether = value>0 && preMoveMembers.length>1;
-    const targets = arrivedTogether ? preMoveMembers : [active];
+    // 出世するのは、この手番で実際に角まで一緒に移動した駒だけ。
+    // ・下の駒が上の駒を乗せたまま角へ到達 → 一緒に移動した全員が出世
+    // ・上の駒が金を振っておんぶを降り、単独で角へ到達 → その駒だけ出世
+    // ・角で新たにおんぶになった → 後から来た側だけ出世
+    // ・0出世 → 手番の駒だけ
+    const targets = value>0 ? travelingMembers : [active];
     const winners=[];
     for(const i of targets){
       const p=players[i];
